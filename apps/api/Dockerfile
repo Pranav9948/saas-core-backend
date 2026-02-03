@@ -23,7 +23,20 @@ RUN npx prisma generate --schema=./apps/api/prisma/schema.prisma
 # Fix: Use pnpm exec to find tsc even if it's hoisted
 RUN cd apps/api && pnpm exec tsc && pnpm exec tsc-alias
 
-# STAGE 3: Production Runner
+# STAGE 3: Development 
+
+FROM node:20-alpine AS development
+WORKDIR /app
+RUN npm install -g pnpm
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
+COPY . .
+# We don't switch to a non-root user here to avoid Windows permission sync issues
+EXPOSE 5000
+# The command is handled by docker-compose, so we leave this empty or use a fallback
+CMD ["pnpm", "run", "dev"]
+
+# STAGE 4: Production Runner
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
