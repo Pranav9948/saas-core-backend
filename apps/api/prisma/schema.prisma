@@ -13,10 +13,85 @@ datasource db {
   provider = "postgresql"
 }
 
-
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
+  id           String @id @default(uuid()) @db.Uuid
+  email        String @unique
+  passwordHash String @map("password_hash")
+  firstName    String @map("first_name")
+  lastName     String @map("last_name")
+
+  // Future-proofing: Role as a string for now, will move to RBAC later
+  role     String  @default("STAFF")
+  isActive Boolean @default(true) @map("is_active")
+
+  // Relations
+  trainerProfile Trainer?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Member {
+  id          String    @id @default(uuid()) @db.Uuid
+  email       String    @unique
+  firstName   String    @map("first_name")
+  lastName    String    @map("last_name")
+  phone       String?
+  dateOfBirth DateTime? @map("date_of_birth")
+
+  // Status tracking
+  status MemberStatus @default(ACTIVE)
+
+  // Relations
+  attendances       Attendance[]
+  assignedTrainerId String?      @map("assigned_trainer_id") @db.Uuid
+  assignedTrainer   Trainer?     @relation(fields: [assignedTrainerId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("members")
+}
+
+model Trainer {
+  id             String  @id @default(uuid()) @db.Uuid
+  specialization String?
+  bio            String?
+
+  // 1-to-1 with User: Every trainer IS a user, but not every user is a trainer
+  userId String @unique @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Relations
+  members Member[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("trainers")
+}
+
+model Attendance {
+  id       String    @id @default(uuid()) @db.Uuid
+  checkIn  DateTime  @default(now()) @map("check_in")
+  checkOut DateTime? @map("check_out")
+
+  // Metadata for AI/Analytics later (e.g., peak hours)
+  deviceInfo String? @map("device_info")
+
+  // Relations
+  memberId String @map("member_id") @db.Uuid
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId, checkIn])
+  @@map("attendance")
+}
+
+enum MemberStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+  BANNED
 }
