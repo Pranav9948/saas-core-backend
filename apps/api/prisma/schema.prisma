@@ -20,12 +20,16 @@ model User {
   firstName    String @map("first_name")
   lastName     String @map("last_name")
 
+  resetToken       String?   @unique
+  resetTokenExpiry DateTime?
+
   // Future-proofing: Role as a string for now, will move to RBAC later
   role     String  @default("STAFF")
   isActive Boolean @default(true) @map("is_active")
 
   // Relations
   trainerProfile Trainer?
+  refreshToken   RefreshToken[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -87,6 +91,18 @@ model Attendance {
 
   @@index([memberId, checkIn])
   @@map("attendance")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  token     String   @unique
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiryAt  DateTime @map("expiry_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("refresh_tokens")
 }
 
 enum MemberStatus {
