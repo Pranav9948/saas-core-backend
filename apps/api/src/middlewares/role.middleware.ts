@@ -1,3 +1,4 @@
+import { ForbiddenException } from '@/exceptions/exceptions.js';
 import { Request, Response, NextFunction } from 'express';
 
 export const authorize = (allowedRoles: string[]) => {
@@ -17,6 +18,17 @@ export const authorize = (allowedRoles: string[]) => {
     }
 
     // 3. Success: move to the controller
+    next();
+  };
+};
+
+export const authorizeRoles = (...roles: string[]) => {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      throw new ForbiddenException(
+        'You do not have permission to perform this action',
+      );
+    }
     next();
   };
 };
