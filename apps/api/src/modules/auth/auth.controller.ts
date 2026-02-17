@@ -2,13 +2,6 @@ import { NextFunction, Request, Response } from 'express';
 import { AuthService } from './auth.service.js';
 import { prisma } from '@/infra/db.js';
 import {
-  SignupSchema,
-  LoginSchema,
-  ForgotPasswordSchema,
-  ResetPasswordSchema,
-} from './auth.schema.js';
-import {
-  BadRequestException,
   NotFoundException,
   UnauthorizedException,
 } from '@/exceptions/exceptions.js';
@@ -22,10 +15,9 @@ export const signup = async (
   next: NextFunction,
 ) => {
   try {
-    const validatedData = await SignupSchema.parse(req.body);
-
-    const { user, accessToken, refreshToken } =
-      await authService.signup(validatedData);
+    const { user, accessToken, refreshToken } = await authService.signup(
+      req.body,
+    );
 
     // Set the Refresh Token in a secure httpOnly cookie
 
@@ -41,7 +33,7 @@ export const signup = async (
       message: 'User registered and logged in successfully',
       data: {
         user,
-        accessToken, // Access token goes in the body for the frontend to store in memory
+        accessToken,
       },
     });
   } catch (error) {
@@ -55,14 +47,8 @@ export const login = async (
   next: NextFunction,
 ) => {
   try {
-    const result = LoginSchema.safeParse(req.body);
-
-    if (!result.success) {
-      throw new BadRequestException('Validation failed');
-    }
-
     const { user, accessToken, refreshToken } = await authService.login(
-      result.data,
+      req.body,
     );
 
     res.cookie('refreshToken', refreshToken, {
@@ -87,7 +73,6 @@ export const logout = async (
     const refreshToken = req.cookies.refreshToken;
 
     if (refreshToken) {
-      // 1. Remove from Database
       await authService.logout(refreshToken);
     }
 
@@ -145,7 +130,6 @@ export const rotateRefreshToken = async (
     const { accessToken, refreshToken } =
       await authService.rotateRefreshToken(oldToken);
 
-    // Overwrite the cookie with the NEW rotated token
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -168,12 +152,6 @@ export const forgotPassword = async (
   next: NextFunction,
 ) => {
   try {
-    const result = ForgotPasswordSchema.safeParse(req.body);
-
-    if (!result.success) {
-      throw new BadRequestException('Validation failed');
-    }
-
     await authService.forgotPassword(req.body.email);
 
     res.status(200).json({
@@ -192,9 +170,7 @@ export const resetPassword = async (
   next: NextFunction,
 ) => {
   try {
-    const validatedData = await ResetPasswordSchema.parse(req.body);
-
-    await authService.resetPassword(validatedData);
+    await authService.resetPassword(req.body);
 
     res.status(200).json({
       success: true,

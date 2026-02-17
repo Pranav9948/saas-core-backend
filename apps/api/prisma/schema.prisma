@@ -110,4 +110,5 @@ enum MemberStatus {
   INACTIVE
   PENDING
   BANNED
+  DELETED
 }

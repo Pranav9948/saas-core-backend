@@ -24,7 +24,7 @@ app.use(express.json());
 
 // Routes
 
-app.use('/api', routes);
+app.use('/api/v1/', routes);
 
 app.use(errorMiddleware);
 
