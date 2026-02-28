@@ -1,36 +1,40 @@
 import pg from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { config } from 'dotenv';
 import { PrismaClient } from '@/generated/prisma/client.js';
+import { config } from '@/core/config.js';
+import { logger } from '@/core/logger.js';
 
-config();
-
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
-  throw new Error('❌ DATABASE_URL is not defined');
+// SAFETY CHECK
+if (
+  config.NODE_ENV === 'test' &&
+  config.DATABASE_URL.includes('dev_saas_backend')
+) {
+  throw new Error(
+    '❌ CRITICAL: Test environment is pointing to the Development Database!',
+  );
 }
 
-const pool = new pg.Pool({ connectionString });
+const pool = new pg.Pool({ connectionString: config.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 
-const prisma = new PrismaClient({
+export const prisma = new PrismaClient({
   adapter,
-  log: ['query', 'info', 'warn', 'error'],
+  log:
+    config.NODE_ENV === 'test' ? ['error'] : ['query', 'info', 'warn', 'error'],
 } as any);
 
-const connectDB = async () => {
+export const connectDB = async () => {
   try {
     await prisma.$connect();
-    console.log('✅ Database connected successfully!');
+    logger.info(
+      `✅ Connected to ${config.NODE_ENV} database: ${config.DATABASE_URL.split('/').pop()}`,
+    );
   } catch (err) {
-    console.error('❌ Database connection failed:', err);
+    logger.error({ err }, '❌ Database connection failed');
     process.exit(1);
   }
 };
 
-const disConnectDB = async () => {
+export const disConnectDB = async () => {
   await prisma.$disconnect();
 };
-
-export { prisma, connectDB, disConnectDB };   

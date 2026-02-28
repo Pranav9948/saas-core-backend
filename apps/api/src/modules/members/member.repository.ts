@@ -76,4 +76,10 @@ export class MemberRepository {
       },
     });
   }
+
+  async findByEmail(email: string) {
+    return prisma.member.findUnique({
+      where: { email },
+    });
+  }
 }

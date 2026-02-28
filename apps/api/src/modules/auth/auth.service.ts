@@ -11,11 +11,14 @@ import { Security } from '@/core/security.js';
 import { getResetPasswordTemplate } from '@/utils/templates.js';
 import { sendEmail } from '@/utils/mail.js';
 
-const userRepo = new UserRepository();
-
 export class AuthService {
+  constructor(
+    private userRepo: UserRepository,
+    private security: typeof Security,
+  ) {}
+
   async signup(data: any) {
-    const existing = await userRepo.findByEmail(data.email);
+    const existing = await this.userRepo.findByEmail(data.email);
     if (existing) {
       throw new ConflictException(
         'User already exists',
@@ -23,8 +26,9 @@ export class AuthService {
       );
     }
 
-    const hashed = await Security.hashPassword(data.password);
-    const user = await userRepo.createUser({
+    const hashed = await this.security.hashPassword(data.password);
+
+    const user = await this.userRepo.createUser({
       email: data.email,
       passwordHash: hashed,
       firstName: data.firstName,
@@ -35,13 +39,13 @@ export class AuthService {
   }
 
   async login(data: any) {
-    const user = await userRepo.findByEmail(data.email);
+    const user = await this.userRepo.findByEmail(data.email);
     if (!user) throw new UnauthorizedException('Invalid email or password');
     if (!user.isActive) {
       throw new UnauthorizedException('Account disabled');
     }
 
-    const isValid = await Security.comparePassword(
+    const isValid = await this.security.comparePassword(
       data.password,
       user.passwordHash,
     );
@@ -51,34 +55,34 @@ export class AuthService {
   }
 
   async rotateRefreshToken(oldToken: string) {
-    const payload = Security.verifyRefreshToken(oldToken);
-    const savedToken = await userRepo.findRefreshToken(oldToken);
+    const payload = this.security.verifyRefreshToken(oldToken);
+    const savedToken = await this.userRepo.findRefreshToken(oldToken);
 
     if (!savedToken) {
-      await userRepo.deleteAllUserRefreshTokens(payload.userId);
+      await this.userRepo.deleteAllUserRefreshTokens(payload.userId);
       throw new UnauthorizedException('Security alert: Session compromised.');
     }
 
-    await userRepo.deleteRefreshToken(oldToken);
+    await this.userRepo.deleteRefreshToken(oldToken);
 
-    const user = await userRepo.findById(payload.userId);
+    const user = await this.userRepo.findById(payload.userId);
     if (!user) throw new UnauthorizedException('User not found');
 
     return this.generateAuthResponse(user);
   }
 
   async logout(token: string) {
-    await userRepo.deleteRefreshToken(token);
+    await this.userRepo.deleteRefreshToken(token);
   }
 
   async forgotPassword(email: string) {
-    const user = await userRepo.findByEmail(email);
+    const user = await this.userRepo.findByEmail(email);
     if (!user) return;
 
     const resetToken = crypto.randomBytes(32).toString('hex');
     const expiry = new Date(Date.now() + 1 * 60 * 60 * 1000);
 
-    await userRepo.updateResetToken(user.id, resetToken, expiry);
+    await this.userRepo.updateResetToken(user.id, resetToken, expiry);
 
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
     try {
@@ -90,7 +94,7 @@ export class AuthService {
   }
 
   async resetPassword(data: any) {
-    const user = await userRepo.findUserByResetToken(data.token);
+    const user = await this.userRepo.findUserByResetToken(data.token);
     if (!user) {
       throw new BadRequestException(
         'Invalid or expired token',
@@ -98,19 +102,21 @@ export class AuthService {
       );
     }
 
-    const hashed = await Security.hashPassword(data.password);
-    await userRepo.updatePassword(user.id, hashed);
-    await userRepo.deleteAllUserRefreshTokens(user.id);
+    const hashed = await this.security.hashPassword(data.password);
+    await this.userRepo.updatePassword(user.id, hashed);
+    await this.userRepo.deleteAllUserRefreshTokens(user.id);
   }
 
   private async generateAuthResponse(user: any) {
-    const accessToken = Security.generateAccessToken({
+    const accessToken = this.security.generateAccessToken({
       userId: user.id,
       role: user.role,
     });
-    const refreshToken = Security.generateRefreshToken({ userId: user.id });
+    const refreshToken = this.security.generateRefreshToken({
+      userId: user.id,
+    });
 
-    await userRepo.createRefreshToken(
+    await this.userRepo.createRefreshToken(
       user.id,
       refreshToken,
       new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -119,3 +125,7 @@ export class AuthService {
     return { user, accessToken, refreshToken };
   }
 }
+
+const userRepo = new UserRepository();
+
+export const authService = new AuthService(userRepo, Security);
