@@ -1,13 +1,11 @@
 import { NextFunction, Request, Response } from 'express';
-import { AuthService } from './auth.service.js';
+import { authService } from './auth.service.js';
 import { prisma } from '@/infra/db.js';
 import {
   NotFoundException,
   UnauthorizedException,
 } from '@/exceptions/exceptions.js';
 import { ErrorCode } from '@/exceptions/root.js';
-
-const authService = new AuthService();
 
 export const signup = async (
   req: Request,

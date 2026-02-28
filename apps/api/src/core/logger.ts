@@ -1,9 +1,11 @@
 import pino from 'pino';
 import { config } from '@/core/config.js';
 
+const isDevLike = ['development', 'test'].includes(config.NODE_ENV);
+
 export const logger = pino({
   level: config.LOG_LEVEL,
-  transport: config.NODE_ENV === 'development' 
+  transport: isDevLike
     ? {
         target: 'pino-pretty',
         options: {
@@ -11,6 +13,6 @@ export const logger = pino({
           ignore: 'pid,hostname',
           translateTime: 'HH:MM:ss Z',
         },
-      } 
-    : undefined, 
+      }
+    : undefined,
 });
