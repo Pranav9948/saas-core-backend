@@ -1,13 +1,15 @@
 import { Prisma } from '@/generated/prisma/client.js';
 import { prisma } from '@/infra/db.js';
+import { getTenantPrisma } from '@/infra/tenant-prisma.js';
 
 export class TrainerRepository {
   private getClient(tx?: Prisma.TransactionClient) {
     return tx || prisma;
   }
 
-  async findById(id: string) {
-    return prisma.trainer.findUnique({
+  async findById(id: string, tenantId: string) {
+    const tenantPrisma = getTenantPrisma(prisma, tenantId);
+    return tenantPrisma.trainer.findUnique({
       where: { id },
       include: {
         user: { select: { firstName: true, lastName: true, email: true } },
@@ -15,12 +17,14 @@ export class TrainerRepository {
     });
   }
 
-  async findByUserId(userId: string) {
-    return prisma.trainer.findUnique({ where: { userId } });
+  async findByUserId(userId: string, tenantId: string) {
+    const tenantPrisma = getTenantPrisma(prisma, tenantId);
+    return tenantPrisma.trainer.findUnique({ where: { userId } });
   }
 
-  async findAll(skip: number, take: number) {
-    return prisma.trainer.findMany({
+  async findAll(skip: number, take: number, tenantId: string) {
+    const tenantPrisma = getTenantPrisma(prisma, tenantId);
+    return tenantPrisma.trainer.findMany({
       skip,
       take,
       select: {
@@ -58,24 +62,32 @@ export class TrainerRepository {
     });
   }
 
-  async updateProfile(id: string, data: Prisma.TrainerUpdateInput) {
-    return prisma.trainer.update({ where: { id }, data });
+  async updateProfile(
+    id: string,
+    data: Prisma.TrainerUpdateInput,
+    tenantId: string,
+  ) {
+    const tenantPrisma = getTenantPrisma(prisma, tenantId);
+    return tenantPrisma.trainer.update({ where: { id }, data });
   }
 
-  async delete(id: string) {
-    return prisma.trainer.delete({ where: { id } });
+  async delete(id: string, tenantId: string) {
+    const tenantPrisma = getTenantPrisma(prisma, tenantId);
+    return tenantPrisma.trainer.delete({ where: { id } });
   }
 
-  async update(id: string, data: any) {
-    return prisma.trainer.update({
+  async update(id: string, data: any, tenantId: string) {
+    const tenantPrisma = getTenantPrisma(prisma, tenantId);
+    return tenantPrisma.trainer.update({
       where: { id },
       data,
       include: { user: { select: { firstName: true, lastName: true } } },
     });
   }
 
-  async findMembers(trainerId: string) {
-    return prisma.member.findMany({
+  async findMembers(trainerId: string, tenantId: string) {
+    const tenantPrisma = getTenantPrisma(prisma, tenantId);
+    return tenantPrisma.member.findMany({
       where: { assignedTrainerId: trainerId },
       select: {
         id: true,

@@ -13,9 +13,13 @@ export class AttendanceService {
     private memberRepo = new MemberRepository(),
   ) {}
 
-  async markAttendance(memberId: string, deviceInfo?: string) {
+  async markAttendance(
+    memberId: string,
+    tenantId: string,
+    deviceInfo?: string,
+  ) {
     // 1. Check if member exists and is active
-    const member = await this.memberRepo.findById(memberId);
+    const member = await this.memberRepo.findById(memberId, tenantId);
     if (!member)
       throw new NotFoundException('Member not found', ErrorCode.NOT_FOUND);
     if (member.status !== 'ACTIVE')
@@ -27,28 +31,30 @@ export class AttendanceService {
       memberId,
       startOfDay(now),
       endOfDay(now),
+      tenantId,
     );
 
     if (existing) {
       throw new BadRequestException('Member has already checked in today');
     }
 
-    return this.attendanceRepo.create({ memberId, deviceInfo });
+    return this.attendanceRepo.create({ memberId, deviceInfo, tenantId });
   }
 
-  async getDailyAttendance(dateString?: string) {
+  async getDailyAttendance(tenantId: string, dateString?: string) {
     const targetDate = dateString ? parseISO(dateString) : new Date();
     return this.attendanceRepo.findByDateRange(
       startOfDay(targetDate),
       endOfDay(targetDate),
+      tenantId,
     );
   }
 
-  async getMemberStats(memberId: string) {
-    const member = await this.memberRepo.findById(memberId);
+  async getMemberStats(tenantId: string, memberId: string) {
+    const member = await this.memberRepo.findById(memberId, tenantId);
     if (!member)
       throw new NotFoundException('Member not found', ErrorCode.NOT_FOUND);
 
-    return this.attendanceRepo.getStats(memberId);
+    return this.attendanceRepo.getStats(memberId, tenantId);
   }
 }

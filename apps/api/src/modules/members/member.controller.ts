@@ -13,7 +13,8 @@ export const createMember = async (
   next: NextFunction,
 ) => {
   try {
-    const member = await memberService.createMember(req.body);
+    const tenantId = req.user!.tenantId;
+    const member = await memberService.createMember(req.body, tenantId);
     res.status(201).json({ success: true, data: member });
   } catch (error) {
     next(error);
@@ -26,10 +27,11 @@ export const getAllMembers = async (
   next: NextFunction,
 ) => {
   try {
+    const tenantId = req.user!.tenantId;
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 10;
 
-    const member = await memberService.listMembers(page, limit);
+    const member = await memberService.listMembers(page, limit, tenantId);
     res.status(201).json({ success: true, data: member });
   } catch (error) {
     next(error);
@@ -42,7 +44,8 @@ export const getMemberById = async (
   next: NextFunction,
 ) => {
   try {
-    const member = await memberService.getMember(req.params.id);
+    const tenantId = req.user!.tenantId;
+    const member = await memberService.getMember(req.params.id, tenantId);
     res.status(200).json({ success: true, data: member });
   } catch (error) {
     next(error);
@@ -55,7 +58,12 @@ export const updateMember = async (
   next: NextFunction,
 ) => {
   try {
-    const data = await memberService.updateMember(req.params.id, req.body);
+    const tenantId = req.user!.tenantId;
+    const data = await memberService.updateMember(
+      req.params.id,
+      req.body,
+      tenantId,
+    );
     res.status(200).json({ success: true, data });
   } catch (error) {
     next(error);
@@ -68,7 +76,8 @@ export const deleteMember = async (
   next: NextFunction,
 ) => {
   try {
-    await memberService.deleteMember(req.params.id);
+    const tenantId = req.user!.tenantId;
+    await memberService.deleteMember(req.params.id, tenantId);
     res.status(200).json({
       success: true,
       message: 'Member successfully deactivated (soft-deleted)',
@@ -84,7 +93,11 @@ export const getMemberHistory = async (
   next: NextFunction,
 ) => {
   try {
-    const history = await memberService.getMemberHistory(req.params.id);
+    const tenantId = req.user!.tenantId;
+    const history = await memberService.getMemberHistory(
+      req.params.id,
+      tenantId,
+    );
     res.status(200).json({
       success: true,
       data: history,

@@ -6,20 +6,17 @@ import {
   UnauthorizedException,
 } from '@/exceptions/exceptions.js';
 import { ErrorCode } from '@/exceptions/root.js';
+import { getTenantPrisma } from '@/infra/tenant-prisma.js';
 
-export const signup = async (
+export const registerGym = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
   try {
-    const { user, accessToken, refreshToken } = await authService.signup(
-      req.body,
-    );
+    const result = await authService.registerGym(req.body);
 
-    // Set the Refresh Token in a secure httpOnly cookie
-
-    res.cookie('refreshToken', refreshToken, {
+    res.cookie('refreshToken', result.refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
@@ -28,16 +25,49 @@ export const signup = async (
 
     res.status(201).json({
       success: true,
-      message: 'User registered and logged in successfully',
+      message: 'Gym registered successfully',
       data: {
-        user,
-        accessToken,
+        user: result.user,
+        accessToken: result.accessToken,
+        tenant: result.tenant,
       },
     });
   } catch (error) {
     next(error);
   }
 };
+
+// export const signup = async (
+//   req: Request,
+//   res: Response,
+//   next: NextFunction,
+// ) => {
+//   try {
+//     const { user, accessToken, refreshToken } = await authService.signup(
+//       req.body,
+//     );
+
+//     // Set the Refresh Token in a secure httpOnly cookie
+
+//     res.cookie('refreshToken', refreshToken, {
+//       httpOnly: true,
+//       secure: process.env.NODE_ENV === 'production',
+//       sameSite: 'strict',
+//       maxAge: 7 * 24 * 60 * 60 * 1000,
+//     });
+
+//     res.status(201).json({
+//       success: true,
+//       message: 'User registered and logged in successfully',
+//       data: {
+//         user,
+//         accessToken,
+//       },
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
 
 export const login = async (
   req: Request,
@@ -68,10 +98,11 @@ export const logout = async (
   next: NextFunction,
 ) => {
   try {
+    const tenantId = req.user!.tenantId;
     const refreshToken = req.cookies.refreshToken;
 
     if (refreshToken) {
-      await authService.logout(refreshToken);
+      await authService.logout(refreshToken, tenantId);
     }
 
     // 2. Clear the Cookie from the browser
@@ -93,9 +124,12 @@ export const getMe = async (
   next: NextFunction,
 ) => {
   try {
+    const tenantId = req.user!.tenantId;
     const userId = req.user?.userId;
 
-    const user = await prisma.user.findUnique({
+    const tenantPrisma = getTenantPrisma(prisma, tenantId);
+
+    const user = await tenantPrisma.user.findUnique({
       where: { id: userId },
       select: {
         id: true,
@@ -125,6 +159,8 @@ export const rotateRefreshToken = async (
     const oldToken = req.cookies.refreshToken;
     if (!oldToken) throw new UnauthorizedException('No refresh token');
 
+    const tenantId = authService.getTenantIdFromRefreshToken(oldToken);
+
     const { accessToken, refreshToken } =
       await authService.rotateRefreshToken(oldToken);
 
@@ -150,7 +186,8 @@ export const forgotPassword = async (
   next: NextFunction,
 ) => {
   try {
-    await authService.forgotPassword(req.body.email);
+    const tenantId = req.user!.tenantId;
+    await authService.forgotPassword(req.body.email, tenantId);
 
     res.status(200).json({
       success: true,
@@ -168,7 +205,8 @@ export const resetPassword = async (
   next: NextFunction,
 ) => {
   try {
-    await authService.resetPassword(req.body);
+    const tenantId = req.user!.tenantId;
+    await authService.resetPassword(req.body, tenantId);
 
     res.status(200).json({
       success: true,

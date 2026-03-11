@@ -41,8 +41,8 @@ services:
     environment:
       # HIGHLIGHT: Internal Network Hostname
       - PORT=5000
-      - DATABASE_URL=postgresql://postgres:2026@localhost:5436/test_saas_backend?schema=public
-      - NODE_ENV=test
+      - DATABASE_URL=postgresql://postgres:2026@postgres:5432/dev_saas_backend
+      - NODE_ENV=development
       - JWT_ACCESS_SECRET=super-long-random-access-secret-32+chars
       - JWT_REFRESH_SECRET=super-long-random-refresh-secret-64+chars
       - PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1

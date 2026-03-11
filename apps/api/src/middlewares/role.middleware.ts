@@ -1,3 +1,4 @@
+import { logger } from '@/core/logger.js';
 import { ForbiddenException } from '@/exceptions/exceptions.js';
 import { Request, Response, NextFunction } from 'express';
 
@@ -24,6 +25,7 @@ export const authorize = (allowedRoles: string[]) => {
 
 export const authorizeRoles = (...roles: string[]) => {
   return (req: Request, _res: Response, next: NextFunction) => {
+    logger.info({ user: req.user }, 'Authenticated user');
     if (!req.user || !roles.includes(req.user.role)) {
       throw new ForbiddenException(
         'You do not have permission to perform this action',
