@@ -13,8 +13,8 @@ export class MemberService {
     private memberRepo = new MemberRepository(),
   ) {}
 
-  async createMember(data: any) {
-    const existing = await this.memberRepo.findByEmail(data.email);
+  async createMember(data: any, tenantId: string) {
+    const existing = await this.memberRepo.findByEmail(data.email, tenantId);
 
     if (existing)
       throw new ConflictException(
@@ -23,7 +23,10 @@ export class MemberService {
       );
 
     if (data.assignedTrainerId) {
-      const trainer = await this.trainerRepo.findById(data.assignedTrainerId);
+      const trainer = await this.trainerRepo.findById(
+        data.assignedTrainerId,
+        tenantId,
+      );
       if (!trainer)
         throw new NotFoundException(
           'Assigned trainer not found',
@@ -31,13 +34,13 @@ export class MemberService {
         );
     }
 
-    return this.memberRepo.create(data);
+    return this.memberRepo.create(data, tenantId);
   }
 
-  async listMembers(page: number, limit: number) {
+  async listMembers(page: number, limit: number, tenantId: string) {
     const skip = (page - 1) * limit;
     const [members, total] = await Promise.all([
-      this.memberRepo.findMany(skip, limit),
+      this.memberRepo.findMany(skip, limit, {}, tenantId),
       prisma.member.count({ where: { status: { not: 'DELETED' } } }),
     ]);
 
@@ -47,8 +50,8 @@ export class MemberService {
     };
   }
 
-  async getMember(id: string) {
-    const member = await this.memberRepo.findById(id);
+  async getMember(id: string, tenantId: string) {
+    const member = await this.memberRepo.findById(id, tenantId);
     if (!member)
       throw new NotFoundException(
         'member profile not found',
@@ -57,13 +60,16 @@ export class MemberService {
     return member;
   }
 
-  async updateMember(id: string, data: any) {
-    const member = await this.memberRepo.findById(id);
+  async updateMember(id: string, data: any, tenantId: string) {
+    const member = await this.memberRepo.findById(id, tenantId);
     if (!member)
       throw new NotFoundException('Member not found', ErrorCode.NOT_FOUND);
 
     if (data.assignedTrainerId) {
-      const trainer = await this.trainerRepo.findById(data.assignedTrainerId);
+      const trainer = await this.trainerRepo.findById(
+        data.assignedTrainerId,
+        tenantId,
+      );
       if (!trainer)
         throw new NotFoundException(
           'The specified trainer does not exist',
@@ -76,22 +82,22 @@ export class MemberService {
       dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
     };
 
-    return this.memberRepo.update(id, updateData);
+    return this.memberRepo.update(id, updateData, tenantId);
   }
 
-  async deleteMember(id: string) {
-    const member = await this.memberRepo.findById(id);
+  async deleteMember(id: string, tenantId: string) {
+    const member = await this.memberRepo.findById(id, tenantId);
     if (!member)
       throw new NotFoundException('Member not found', ErrorCode.NOT_FOUND);
 
-    return this.memberRepo.softDelete(id);
+    return this.memberRepo.softDelete(id, tenantId);
   }
 
-  async getMemberHistory(id: string) {
-    const member = await this.memberRepo.findById(id);
+  async getMemberHistory(id: string, tenantId: string) {
+    const member = await this.memberRepo.findById(id, tenantId);
     if (!member)
       throw new NotFoundException('Member not found', ErrorCode.NOT_FOUND);
 
-    return this.memberRepo.getAttendanceHistory(id);
+    return this.memberRepo.getAttendanceHistory(id, tenantId);
   }
 }

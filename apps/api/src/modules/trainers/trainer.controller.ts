@@ -13,7 +13,8 @@ export const createTrainer = async (
   next: NextFunction,
 ) => {
   try {
-    const trainer = await trainerService.registerTrainer(req.body);
+    const tenantId = req.user!.tenantId;
+    const trainer = await trainerService.registerTrainer(req.body, tenantId);
     res.status(201).json({ success: true, data: trainer });
   } catch (error) {
     next(error);
@@ -26,9 +27,10 @@ export const listTrainers = async (
   next: NextFunction,
 ) => {
   try {
+    const tenantId = req.user!.tenantId;
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 10;
-    const result = await trainerService.getTrainers(page, limit);
+    const result = await trainerService.getTrainers(page, limit, tenantId);
     res.status(200).json({ success: true, ...result });
   } catch (error) {
     next(error);
@@ -41,7 +43,11 @@ export const getTrainer = async (
   next: NextFunction,
 ) => {
   try {
-    const trainer = await trainerService.getTrainerProfile(req.params.id);
+    const tenantId = req.user!.tenantId;
+    const trainer = await trainerService.getTrainerProfile(
+      req.params.id,
+      tenantId,
+    );
     res.status(200).json({ success: true, data: trainer });
   } catch (error) {
     next(error);
@@ -54,7 +60,12 @@ export const updateTrainer = async (
   next: NextFunction,
 ) => {
   try {
-    const data = await trainerService.updateTrainer(req.params.id, req.body);
+    const tenantId = req.user!.tenantId;
+    const data = await trainerService.updateTrainer(
+      req.params.id,
+      req.body,
+      tenantId,
+    );
     res.status(200).json({ success: true, data });
   } catch (error) {
     next(error);
@@ -67,7 +78,8 @@ export const deleteTrainer = async (
   next: NextFunction,
 ) => {
   try {
-    await trainerService.deleteTrainer(req.params.id);
+    const tenantId = req.user!.tenantId;
+    await trainerService.deleteTrainer(req.params.id, tenantId);
     res.status(200).json({
       success: true,
       message: 'Trainer profile deleted and role reverted.',
@@ -83,7 +95,11 @@ export const getTrainerMembers = async (
   next: NextFunction,
 ) => {
   try {
-    const members = await trainerService.getTrainerMembers(req.params.id);
+    const tenantId = req.user!.tenantId;
+    const members = await trainerService.getTrainerMembers(
+      req.params.id,
+      tenantId,
+    );
     res.status(200).json({ success: true, data: members });
   } catch (error) {
     next(error);

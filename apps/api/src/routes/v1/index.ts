@@ -5,12 +5,14 @@ import healthRoutes from '../../modules/health/index.js';
 import memberRoutes from '../../modules/members/member.routes.js';
 import trainerRoutes from '../../modules/trainers/trainer.routes.js';
 import attendanceRoutes from '../../modules/attendance/attendance.routes.js';
+import tenantRoutes from '../../modules/tenant/tenant.route.js';
 import { authenticate } from '@/middlewares/auth.middleware.js';
 import { authorizeRoles } from '@/middlewares/role.middleware.js';
 
 const router: ExpressRouter = Router();
 
 router.use('/auth', authRoutes);
+
 router.use('/health', healthRoutes);
 router.use(
   '/members',
@@ -20,5 +22,6 @@ router.use(
 );
 router.use('/trainers', trainerRoutes);
 router.use('/attendance', attendanceRoutes);
+router.use('/tenant', tenantRoutes);
 
 export default router;

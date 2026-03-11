@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -13,81 +7,106 @@ datasource db {
   provider = "postgresql"
 }
 
+model Tenant {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String
+  slug         String   @unique
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  address      String
+  city         String
+  contactEmail String   @map("contact_email")
+  contactPhone String   @map("contact_phone")
+  country      String
+  timezone     String   @default("UTC")
+  logoUrl      String?  @map("logo_url")
+
+  attendance   Attendance[]
+  members      Member[]
+  refreshToken RefreshToken[]
+  tenantUsers  TenantUser[]
+  trainers     Trainer[]
+
+  @@map("tenants")
+}
+
+model TenantUser {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  tenantId  String   @db.Uuid
+  role      String   @default("STAFF")
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tenantId])
+  @@map("tenant_users")
+}
+
 model User {
-  id           String @id @default(uuid()) @db.Uuid
-  email        String @unique
-  passwordHash String @map("password_hash")
-  firstName    String @map("first_name")
-  lastName     String @map("last_name")
-
-  resetToken       String?   @unique
+  id               String         @id @default(uuid()) @db.Uuid
+  email            String         @unique
+  passwordHash     String         @map("password_hash")
+  firstName        String         @map("first_name")
+  lastName         String         @map("last_name")
+  resetToken       String?        @unique
   resetTokenExpiry DateTime?
-
-  // Future-proofing: Role as a string for now, will move to RBAC later
-  role     String  @default("STAFF")
-  isActive Boolean @default(true) @map("is_active")
-
-  // Relations
-  trainerProfile Trainer?
-  refreshToken   RefreshToken[]
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  role             String         @default("STAFF")
+  isActive         Boolean        @default(true) @map("is_active")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  refreshToken     RefreshToken[]
+  tenants          TenantUser[]
+  trainerProfile   Trainer?
 
   @@map("users")
 }
 
 model Member {
-  id          String    @id @default(uuid()) @db.Uuid
-  email       String    @unique
-  firstName   String    @map("first_name")
-  lastName    String    @map("last_name")
-  phone       String?
-  dateOfBirth DateTime? @map("date_of_birth")
-
-  // Status tracking
-  status MemberStatus @default(ACTIVE)
-
-  // Relations
-  attendances       Attendance[]
+  id                String       @id @default(uuid()) @db.Uuid
+  email             String
+  firstName         String       @map("first_name")
+  lastName          String       @map("last_name")
+  phone             String?
+  dateOfBirth       DateTime?    @map("date_of_birth")
+  status            MemberStatus @default(ACTIVE)
   assignedTrainerId String?      @map("assigned_trainer_id") @db.Uuid
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+  tenantId          String       @map("tenant_id") @db.Uuid
+  attendances       Attendance[]
   assignedTrainer   Trainer?     @relation(fields: [assignedTrainerId], references: [id])
+  tenant            Tenant       @relation(fields: [tenantId], references: [id])
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
+  @@unique([email, tenantId])
   @@map("members")
 }
 
 model Trainer {
-  id             String  @id @default(uuid()) @db.Uuid
+  id             String   @id @default(uuid()) @db.Uuid
   specialization String?
   bio            String?
-
-  // 1-to-1 with User: Every trainer IS a user, but not every user is a trainer
-  userId String @unique @map("user_id") @db.Uuid
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Relations
-  members Member[]
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  userId         String   @unique @map("user_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  tenantId       String   @map("tenant_id") @db.Uuid
+  members        Member[]
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("trainers")
 }
 
 model Attendance {
-  id       String    @id @default(uuid()) @db.Uuid
-  checkIn  DateTime  @default(now()) @map("check_in")
-  checkOut DateTime? @map("check_out")
-
-  // Metadata for AI/Analytics later (e.g., peak hours)
-  deviceInfo String? @map("device_info")
-
-  // Relations
-  memberId String @map("member_id") @db.Uuid
-  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  id         String    @id @default(uuid()) @db.Uuid
+  checkIn    DateTime  @default(now()) @map("check_in")
+  checkOut   DateTime? @map("check_out")
+  deviceInfo String?   @map("device_info")
+  memberId   String    @map("member_id") @db.Uuid
+  tenantId   String    @db.Uuid
+  member     Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  tenant     Tenant    @relation(fields: [tenantId], references: [id])
 
   @@index([memberId, checkIn])
   @@map("attendance")
@@ -97,9 +116,11 @@ model RefreshToken {
   id        String   @id @default(uuid()) @db.Uuid
   token     String   @unique
   userId    String   @map("user_id") @db.Uuid
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiryAt  DateTime @map("expiry_at")
   createdAt DateTime @default(now()) @map("created_at")
+  tenantId  String?  @db.Uuid
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("refresh_tokens")
