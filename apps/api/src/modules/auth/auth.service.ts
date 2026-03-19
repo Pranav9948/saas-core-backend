@@ -79,7 +79,7 @@ export class AuthService {
 
     await this.userRepo.deleteRefreshToken(oldToken, tenantId);
 
-    const user = await this.userRepo.findById(payload.userId, tenantId);
+    const user = await this.userRepo.findById(payload.userId);
     if (!user) throw new UnauthorizedException('User not found');
 
     return this.generateAuthResponse(user, tenantId);

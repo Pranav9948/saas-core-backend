@@ -1,6 +1,6 @@
 import { Prisma, PrismaClient } from '@/generated/prisma/client.js';
 
-const TENANT_MODELS = ['User', 'Member', 'Trainer', 'Attendance'];
+const TENANT_MODELS = ['Member', 'Trainer', 'Attendance'];
 
 export const getTenantPrisma = (prisma: PrismaClient, tenantId: string) => {
   return prisma.$extends({

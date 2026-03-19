@@ -31,6 +31,12 @@ RUN npm install -g pnpm
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY . .
+
+
+RUN if [ ! -d "./apps/api/node_modules" ] && [ -d "./node_modules" ]; then \
+      ln -s /app/node_modules /app/apps/api/node_modules; \
+    fi
+    
 # We don't switch to a non-root user here to avoid Windows permission sync issues
 EXPOSE 5000
 # The command is handled by docker-compose, so we leave this empty or use a fallback
@@ -48,6 +54,7 @@ COPY --from=builder /app/apps/api/package.json ./
 COPY --from=builder /app/apps/api/prisma ./prisma
 # Copy root node_modules for the production run
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules 
 COPY --from=builder /app/apps/api/prisma.config.ts ./
 
 # Added this line to give the user permission to the folder
