@@ -15,14 +15,14 @@ router.use(authenticate);
 
 router.post(
   '/',
-  authorizeRoles('ADMIN'),
+  authorizeRoles('OWNER', 'ADMIN'),
   validate(CreateTrainerSchema),
   trainerController.createTrainer,
 );
 
 router.get(
   '/',
-  authorizeRoles('ADMIN', 'STAFF'),
+  authorizeRoles('OWNER', 'ADMIN', 'STAFF'),
   trainerController.listTrainers,
 );
 
@@ -30,21 +30,21 @@ router.get('/:id', validate(GetTrainerIDSchema), trainerController.getTrainer);
 
 router.patch(
   '/:id',
-  authorizeRoles('ADMIN'),
+  authorizeRoles('OWNER', 'ADMIN'),
   validate(UpdateTrainerSchema),
   trainerController.updateTrainer,
 );
 
 router.delete(
   '/:id',
-  authorizeRoles('ADMIN'),
+  authorizeRoles('OWNER', 'ADMIN'),
   validate(GetTrainerIDSchema),
   trainerController.deleteTrainer,
 );
 
 router.get(
   '/:id/members',
-  authorizeRoles('ADMIN', 'STAFF'),
+  authorizeRoles('OWNER', 'ADMIN', 'STAFF'),
   validate(GetTrainerIDSchema),
   trainerController.getTrainerMembers,
 );

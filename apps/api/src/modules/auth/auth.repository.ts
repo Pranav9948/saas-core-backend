@@ -14,10 +14,8 @@ export class UserRepository {
     return tenantPrisma.user.findUnique({ where: { email } });
   }
 
-  async findById(id: string, tenantId: string) {
-    const tenantPrisma = getTenantPrisma(prisma, tenantId);
-
-    return tenantPrisma.user.findUnique({ where: { id } });
+  async findById(id: string) {
+    return prisma.user.findUnique({ where: { id } });
   }
 
   async createUser(tenantId: string, data: Prisma.UserCreateInput) {

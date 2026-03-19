@@ -28,8 +28,10 @@ export const listTrainers = async (
 ) => {
   try {
     const tenantId = req.user!.tenantId;
-    const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 10;
+
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(Number(req.query.limit) || 10, 50);
+
     const result = await trainerService.getTrainers(page, limit, tenantId);
     res.status(200).json({ success: true, ...result });
   } catch (error) {
@@ -44,10 +46,10 @@ export const getTrainer = async (
 ) => {
   try {
     const tenantId = req.user!.tenantId;
-    const trainer = await trainerService.getTrainerProfile(
-      req.params.id,
-      tenantId,
-    );
+    const trainerId = req.params.id;
+
+    const trainer = await trainerService.getTrainerProfile(trainerId, tenantId);
+
     res.status(200).json({ success: true, data: trainer });
   } catch (error) {
     next(error);
@@ -61,12 +63,18 @@ export const updateTrainer = async (
 ) => {
   try {
     const tenantId = req.user!.tenantId;
-    const data = await trainerService.updateTrainer(
-      req.params.id,
+    const trainerId = req.params.id;
+
+    const updatedTrainer = await trainerService.updateTrainer(
+      trainerId,
       req.body,
       tenantId,
     );
-    res.status(200).json({ success: true, data });
+
+    res.status(200).json({
+      success: true,
+      data: updatedTrainer,
+    });
   } catch (error) {
     next(error);
   }
@@ -96,11 +104,22 @@ export const getTrainerMembers = async (
 ) => {
   try {
     const tenantId = req.user!.tenantId;
-    const members = await trainerService.getTrainerMembers(
-      req.params.id,
+    const trainerId = req.params.id;
+
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(Number(req.query.limit) || 10, 50);
+
+    const result = await trainerService.getTrainerMembers(
+      trainerId,
       tenantId,
+      page,
+      limit,
     );
-    res.status(200).json({ success: true, data: members });
+
+    res.status(200).json({
+      success: true,
+      ...result,
+    });
   } catch (error) {
     next(error);
   }

@@ -28,11 +28,16 @@ export const getAllMembers = async (
 ) => {
   try {
     const tenantId = req.user!.tenantId;
-    const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 10;
 
-    const member = await memberService.listMembers(page, limit, tenantId);
-    res.status(201).json({ success: true, data: member });
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(Number(req.query.limit) || 10, 50);
+
+    const result = await memberService.listMembers(page, limit, tenantId);
+
+    res.status(200).json({
+      success: true,
+      ...result,
+    });
   } catch (error) {
     next(error);
   }
@@ -45,8 +50,14 @@ export const getMemberById = async (
 ) => {
   try {
     const tenantId = req.user!.tenantId;
-    const member = await memberService.getMember(req.params.id, tenantId);
-    res.status(200).json({ success: true, data: member });
+    const memberId = req.params.id;
+
+    const member = await memberService.getMember(memberId, tenantId);
+
+    res.status(200).json({
+      success: true,
+      data: member,
+    });
   } catch (error) {
     next(error);
   }
@@ -77,7 +88,10 @@ export const deleteMember = async (
 ) => {
   try {
     const tenantId = req.user!.tenantId;
-    await memberService.deleteMember(req.params.id, tenantId);
+    const userId = req.user!.userId;
+
+    await memberService.deleteMember(req.params.id, tenantId, userId);
+
     res.status(200).json({
       success: true,
       message: 'Member successfully deactivated (soft-deleted)',

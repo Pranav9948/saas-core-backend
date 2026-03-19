@@ -6,6 +6,7 @@ import {
 } from '@/exceptions/exceptions.js';
 import { startOfDay, endOfDay, parseISO } from 'date-fns';
 import { ErrorCode } from '@/exceptions/root.js';
+import { logger } from '@/core/logger.js';
 
 export class AttendanceService {
   constructor(
@@ -18,27 +19,38 @@ export class AttendanceService {
     tenantId: string,
     deviceInfo?: string,
   ) {
-    // 1. Check if member exists and is active
     const member = await this.memberRepo.findById(memberId, tenantId);
-    if (!member)
+
+    if (!member) {
       throw new NotFoundException('Member not found', ErrorCode.NOT_FOUND);
-    if (member.status !== 'ACTIVE')
-      throw new BadRequestException('Inactive members cannot check in');
-
-    // 2. Prevent duplicate check-in for the same day
-    const now = new Date();
-    const existing = await this.attendanceRepo.findExistingCheckIn(
-      memberId,
-      startOfDay(now),
-      endOfDay(now),
-      tenantId,
-    );
-
-    if (existing) {
-      throw new BadRequestException('Member has already checked in today');
     }
 
-    return this.attendanceRepo.create({ memberId, deviceInfo, tenantId });
+    if (member.status !== 'ACTIVE') {
+      throw new BadRequestException('Inactive members cannot check in');
+    }
+
+    const today = new Date();
+    const dateOnly = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    );
+
+    logger.info(`dateOnly ,today ,${dateOnly} : ${today}`);
+
+    try {
+      return await this.attendanceRepo.create({
+        memberId,
+        tenantId,
+        deviceInfo,
+        date: dateOnly,
+      });
+    } catch (error: any) {
+      if (error.code === 'P2002') {
+        throw new BadRequestException('Member already checked in today');
+      }
+      throw error;
+    }
   }
 
   async getDailyAttendance(tenantId: string, dateString?: string) {

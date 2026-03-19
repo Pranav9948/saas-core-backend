@@ -25,7 +25,8 @@ export const authorize = (allowedRoles: string[]) => {
 
 export const authorizeRoles = (...roles: string[]) => {
   return (req: Request, _res: Response, next: NextFunction) => {
-    logger.info({ user: req.user }, 'Authenticated user');
+    logger.info({ user: req.user }, 'Authenticated user', roles, 'roles');
+    logger.info(roles, 'roles');
     if (!req.user || !roles.includes(req.user.role)) {
       throw new ForbiddenException(
         'You do not have permission to perform this action',
