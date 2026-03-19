@@ -6,22 +6,17 @@ import memberRoutes from '../../modules/members/member.routes.js';
 import trainerRoutes from '../../modules/trainers/trainer.routes.js';
 import attendanceRoutes from '../../modules/attendance/attendance.routes.js';
 import tenantRoutes from '../../modules/tenant/tenant.route.js';
-import { authenticate } from '@/middlewares/auth.middleware.js';
-import { authorizeRoles } from '@/middlewares/role.middleware.js';
+import superAdminRoutes from '../../modules/superAdmin/super-admin.routes.js';
 
 const router: ExpressRouter = Router();
 
 router.use('/auth', authRoutes);
 
 router.use('/health', healthRoutes);
-router.use(
-  '/members',
-  authenticate,
-  authorizeRoles('STAFF', 'ADMIN'),
-  memberRoutes,
-);
+router.use('/members', memberRoutes);
 router.use('/trainers', trainerRoutes);
 router.use('/attendance', attendanceRoutes);
 router.use('/tenant', tenantRoutes);
+router.use('/super-admin', superAdminRoutes);
 
 export default router;

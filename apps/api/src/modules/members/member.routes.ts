@@ -10,34 +10,45 @@ import {
 } from './member.schema.js';
 
 const router: ExpressRouter = Router();
-router.use(authenticate);
 
 router.post(
   '/',
-  authorizeRoles('ADMIN', 'STAFF'),
+  authenticate,
+  authorizeRoles('OWNER', 'ADMIN', 'STAFF'),
   validate(CreateMemberSchema),
   memberController.createMember,
 );
 router.get(
   '/',
-  authorizeRoles('ADMIN', 'STAFF'),
+  authenticate,
+  authorizeRoles('OWNER', 'ADMIN', 'STAFF'),
   memberController.getAllMembers,
 );
-router.get('/:id', validate(MemberIdSchema), memberController.getMemberById);
+router.get(
+  '/:id',
+  authenticate,
+  authorizeRoles('OWNER', 'ADMIN', 'STAFF'),
+  validate(MemberIdSchema),
+  memberController.getMemberById,
+);
 router.patch(
   '/:id',
-  authorizeRoles('ADMIN', 'STAFF'),
+  authenticate,
+  authorizeRoles('OWNER', 'ADMIN', 'STAFF'),
   validate(UpdateMemberSchema),
   memberController.updateMember,
 );
 router.delete(
   '/:id',
-  authorizeRoles('ADMIN'),
+  authenticate,
+  authorizeRoles('OWNER', 'ADMIN', 'STAFF'),
   validate(MemberIdSchema),
   memberController.deleteMember,
 );
 router.get(
   '/:id/attendance',
+  authenticate,
+  authorizeRoles('OWNER', 'ADMIN', 'STAFF'),
   validate(MemberIdSchema),
   memberController.getMemberHistory,
 );

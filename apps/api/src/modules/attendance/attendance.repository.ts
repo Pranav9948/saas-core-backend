@@ -1,5 +1,4 @@
 import { prisma } from '@/infra/db.js';
-import { getTenantPrisma } from '@/infra/tenant-prisma.js';
 import { convertUTCToIST } from '@/utils/date.util.js';
 
 export class AttendanceRepository {
@@ -9,11 +8,10 @@ export class AttendanceRepository {
     endOfDay: Date,
     tenantId: string,
   ) {
-    const tenantPrisma = getTenantPrisma(prisma, tenantId);
-
-    return tenantPrisma.attendance.findFirst({
+    return prisma.attendance.findFirst({
       where: {
         memberId,
+        tenantId,
         checkIn: { gte: startOfDay, lte: endOfDay },
       },
     });
@@ -21,25 +19,36 @@ export class AttendanceRepository {
 
   async create(data: {
     memberId: string;
-    deviceInfo?: string;
     tenantId: string;
+    deviceInfo?: string;
+    date: Date;
   }) {
-    const { tenantId, ...attendanceData } = data;
-    const tenantPrisma = getTenantPrisma(prisma, tenantId);
-
-    return tenantPrisma.attendance.create({
-      data: attendanceData,
-      include: {
-        member: { select: { firstName: true, lastName: true, email: true } },
+    return prisma.attendance.create({
+      data: {
+        memberId: data.memberId,
+        tenantId: data.tenantId,
+        deviceInfo: data.deviceInfo,
+        date: data.date,
+      },
+      select: {
+        id: true,
+        checkIn: true,
+        date: true,
+        deviceInfo: true,
+        member: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
       },
     });
   }
 
   async findByDateRange(start: Date, end: Date, tenantId: string) {
-    const tenantPrisma = getTenantPrisma(prisma, tenantId);
-
-    return tenantPrisma.attendance.findMany({
-      where: { checkIn: { gte: start, lte: end } },
+    return prisma.attendance.findMany({
+      where: { tenantId, checkIn: { gte: start, lte: end } },
       include: {
         member: { select: { firstName: true, lastName: true, status: true } },
       },
@@ -48,13 +57,11 @@ export class AttendanceRepository {
   }
 
   async getStats(memberId: string, tenantId: string) {
-    const tenantPrisma = getTenantPrisma(prisma, tenantId);
-
-    const totalVisits = await tenantPrisma.attendance.count({
-      where: { memberId },
+    const totalVisits = await prisma.attendance.count({
+      where: { tenantId, memberId },
     });
-    const lastVisit = await tenantPrisma.attendance.findFirst({
-      where: { memberId },
+    const lastVisit = await prisma.attendance.findFirst({
+      where: { memberId, tenantId },
       orderBy: { checkIn: 'desc' },
     });
 

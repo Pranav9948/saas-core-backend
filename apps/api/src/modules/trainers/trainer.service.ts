@@ -7,11 +7,13 @@ import { UserRepository } from '../auth/auth.repository.js';
 import { prisma } from '@/infra/db.js';
 import { ErrorCode } from '@/exceptions/root.js';
 import { Prisma } from '@/generated/prisma/client.js';
+import { TenantUserRepository } from '../tenant/tenant.userrepository.js';
 
 export class TrainerService {
   constructor(
     private userRepo = new UserRepository(),
     private trainerRepo = new TrainerRepository(),
+    private tenantUserRepo = new TenantUserRepository(),
   ) {}
 
   async registerTrainer(
@@ -22,36 +24,64 @@ export class TrainerService {
     },
     tenantId: string,
   ) {
-    const user = await this.userRepo.findById(data.userId, tenantId);
-    if (!user)
-      throw new NotFoundException('User not found', ErrorCode.USER_NOT_FOUND);
+    const user = await this.userRepo.findById(data.userId);
+
+    if (!user) {
+      throw new NotFoundException('User not found', ErrorCode.NOT_FOUND);
+    }
+
+    //  Check user belongs to tenant
+    const tenantUser = await this.tenantUserRepo.findUserInTenant(
+      data.userId,
+      tenantId,
+    );
+
+    if (!tenantUser) {
+      throw new BadRequestException('User does not belong to this tenant');
+    }
 
     const existing = await this.trainerRepo.findByUserId(data.userId, tenantId);
     if (existing) throw new BadRequestException('User is already a trainer');
 
+    // 4️ Transaction
+
     return await prisma.$transaction(async (tx) => {
-      await this.userRepo.updateRole(user.id, 'TRAINER', tenantId, tx);
+      await this.tenantUserRepo.updateRole(
+        data.userId,
+        tenantId,
+        'TRAINER',
+        tx,
+      );
 
-      const trainerData: Prisma.TrainerCreateInput = {
-        specialization: data.specialization ?? null,
-        bio: data.bio ?? null,
-        user: {
-          connect: { id: user.id },
+      return await this.trainerRepo.createProfile(
+        {
+          userId: data.userId,
+          tenantId,
+          specialization: data.specialization ?? null,
+          bio: data.bio ?? null,
         },
-        tenant: {
-          connect: { id: tenantId },
-        },
-      };
-
-      return await this.trainerRepo.createProfile(trainerData, tx);
+        tx,
+      );
     });
   }
 
   async getTrainers(page: number, limit: number, tenantId: string) {
     const skip = (page - 1) * limit;
-    const trainers = await this.trainerRepo.findAll(skip, limit, tenantId);
-    const total = await prisma.trainer.count();
-    return { trainers, meta: { total, page, limit } };
+
+    const [trainers, total] = await Promise.all([
+      this.trainerRepo.findAll(skip, limit, tenantId),
+      this.trainerRepo.count(tenantId),
+    ]);
+
+    return {
+      trainers,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   async getTrainerProfile(id: string, tenantId: string) {
@@ -64,12 +94,23 @@ export class TrainerService {
     return trainer;
   }
 
-  async updateTrainer(id: string, data: any, tenantId: string) {
+  async updateTrainer(
+    id: string,
+    data: {
+      specialization?: string;
+      bio?: string;
+    },
+    tenantId: string,
+  ) {
     const trainer = await this.trainerRepo.findById(id, tenantId);
-    if (!trainer)
+
+    if (!trainer) {
       throw new NotFoundException('Trainer not found', ErrorCode.NOT_FOUND);
+    }
+
     return this.trainerRepo.update(id, data, tenantId);
   }
+
   async deleteTrainer(id: string, tenantId: string) {
     const trainer = await this.trainerRepo.findById(id, tenantId);
     if (!trainer)
@@ -77,16 +118,46 @@ export class TrainerService {
 
     return await prisma.$transaction(async (tx) => {
       // 1. Revert user role
-      await this.userRepo.updateRole(trainer.userId, 'STAFF', tenantId, tx);
+
+      await this.tenantUserRepo.updateRole(
+        trainer.userId,
+        tenantId,
+        'STAFF',
+        tx,
+      );
+
       // 2. Delete trainer profile
-      return this.trainerRepo.delete(id, tenantId);
+      return this.trainerRepo.delete(id, tenantId, tx);
     });
   }
 
-  async getTrainerMembers(id: string, tenantId: string) {
-    const trainer = await this.trainerRepo.findById(id, tenantId);
-    if (!trainer)
+  async getTrainerMembers(
+    trainerId: string,
+    tenantId: string,
+    page: number,
+    limit: number,
+  ) {
+    const trainer = await this.trainerRepo.findById(trainerId, tenantId);
+
+    if (!trainer) {
       throw new NotFoundException('Trainer not found', ErrorCode.NOT_FOUND);
-    return this.trainerRepo.findMembers(id, tenantId);
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [members, total] = await Promise.all([
+      this.trainerRepo.findMembers(trainerId, tenantId, skip, limit),
+      this.trainerRepo.countMembers(trainerId, tenantId),
+    ]);
+
+    return {
+      members,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 }

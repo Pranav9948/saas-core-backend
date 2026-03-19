@@ -14,8 +14,8 @@ export const markAttendance = async (
 
     const record = await attendanceService.markAttendance(
       memberId,
-      deviceInfo,
       tenantId,
+      deviceInfo,
     );
     res.status(201).json({ success: true, data: record });
   } catch (error) {

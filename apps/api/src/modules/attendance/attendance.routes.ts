@@ -36,6 +36,7 @@ router.get(
 // Stats for a specific member
 router.get(
   '/stats/:id',
+  authorizeRoles('ADMIN', 'STAFF'),
   validate(MemberStatsSchema),
   controller.getMemberStats,
 );

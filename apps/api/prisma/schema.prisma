@@ -95,7 +95,37 @@ model Trainer {
   tenant         Tenant   @relation(fields: [tenantId], references: [id])
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, tenantId])
   @@map("trainers")
+}
+
+model SuperAdmin {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  firstName    String    @map("first_name")
+  lastName     String    @map("last_name")
+  role         String    @default("SUPER_ADMIN")
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  refreshToken SuperAdminRefreshToken[]
+
+  @@map("super_admins")
+}
+
+model SuperAdminRefreshToken {
+  id           String   @id @default(uuid()) @db.Uuid
+  superAdminId String   @map("super_admin_id") @db.Uuid
+  token        String   @unique
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  superAdmin SuperAdmin @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+
+  @@map("super_admin_refresh_tokens")
 }
 
 model Attendance {
@@ -108,6 +138,9 @@ model Attendance {
   member     Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
   tenant     Tenant    @relation(fields: [tenantId], references: [id])
 
+  date DateTime @db.Date
+
+  @@unique([memberId, date])
   @@index([memberId, checkIn])
   @@map("attendance")
 }
@@ -124,6 +157,21 @@ model RefreshToken {
 
   @@index([userId])
   @@map("refresh_tokens")
+}
+
+model InviteToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  email     String
+  tenantId  String   @db.Uuid
+  firstName String   @map("first_name")
+  lastName  String   @map("last_name")
+  role      String
+  token     String   @unique
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+
+  @@map("invite_tokens")
 }
 
 enum MemberStatus {

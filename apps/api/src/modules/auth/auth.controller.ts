@@ -7,6 +7,7 @@ import {
 } from '@/exceptions/exceptions.js';
 import { ErrorCode } from '@/exceptions/root.js';
 import { getTenantPrisma } from '@/infra/tenant-prisma.js';
+import { logger } from '@/core/logger.js';
 
 export const registerGym = async (
   req: Request,
@@ -36,38 +37,6 @@ export const registerGym = async (
     next(error);
   }
 };
-
-// export const signup = async (
-//   req: Request,
-//   res: Response,
-//   next: NextFunction,
-// ) => {
-//   try {
-//     const { user, accessToken, refreshToken } = await authService.signup(
-//       req.body,
-//     );
-
-//     // Set the Refresh Token in a secure httpOnly cookie
-
-//     res.cookie('refreshToken', refreshToken, {
-//       httpOnly: true,
-//       secure: process.env.NODE_ENV === 'production',
-//       sameSite: 'strict',
-//       maxAge: 7 * 24 * 60 * 60 * 1000,
-//     });
-
-//     res.status(201).json({
-//       success: true,
-//       message: 'User registered and logged in successfully',
-//       data: {
-//         user,
-//         accessToken,
-//       },
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
 
 export const login = async (
   req: Request,

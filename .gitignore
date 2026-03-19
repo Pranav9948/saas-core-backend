@@ -7,8 +7,10 @@ dist/
 build/
 
 # Environments & Secrets
+.env*
 .env
 .env.local
+.env.test
 .env.*.local
 *.pem
 
