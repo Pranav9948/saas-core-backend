@@ -172,11 +172,18 @@ export class AuthService {
   }
 
   private async generateAuthResponse(user: any, tenantId: string) {
+    const tenantUser = await this.tenantRepo.findTenantUser(user.id, tenantId);
+
+    if (!tenantUser) {
+      throw new UnauthorizedException('User not linked to tenant');
+    }
+
     const accessToken = this.security.generateAccessToken({
       userId: user.id,
-      role: user.role,
       tenantId,
+      roleId: tenantUser.roleId!,
     });
+
     const refreshToken = this.security.generateRefreshToken({
       userId: user.id,
       tenantId,
@@ -185,7 +192,6 @@ export class AuthService {
     await this.userRepo.createRefreshToken(
       user.id,
       refreshToken,
-
       new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       tenantId,
     );

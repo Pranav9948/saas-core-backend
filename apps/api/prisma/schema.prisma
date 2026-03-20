@@ -27,18 +27,23 @@ model Tenant {
   refreshToken RefreshToken[]
   tenantUsers  TenantUser[]
   trainers     Trainer[]
+  roles        Role[]
 
   @@map("tenants")
 }
 
 model TenantUser {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @db.Uuid
-  tenantId  String   @db.Uuid
-  role      String   @default("STAFF")
+  id       String @id @default(uuid()) @db.Uuid
+  userId   String @db.Uuid
+  tenantId String @db.Uuid
+
+  roleId  String? @db.Uuid
+  roleRef Role?   @relation(fields: [roleId], references: [id])
+
   createdAt DateTime @default(now())
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, tenantId])
   @@map("tenant_users")
@@ -172,6 +177,42 @@ model InviteToken {
   createdAt DateTime @default(now())
 
   @@map("invite_tokens")
+}
+
+model Role {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  tenantId  String   @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users       TenantUser[]
+  permissions RolePermission[]
+
+  @@unique([name, tenantId])
+  @@map("roles")
+}
+
+model Permission {
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String  @unique
+  description String?
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @db.Uuid
+  permissionId String @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
 }
 
 enum MemberStatus {
