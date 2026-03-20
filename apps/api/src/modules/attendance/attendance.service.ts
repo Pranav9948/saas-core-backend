@@ -36,8 +36,6 @@ export class AttendanceService {
       today.getDate(),
     );
 
-    logger.info(`dateOnly ,today ,${dateOnly} : ${today}`);
-
     try {
       return await this.attendanceRepo.create({
         memberId,
@@ -62,7 +60,7 @@ export class AttendanceService {
     );
   }
 
-  async getMemberStats(tenantId: string, memberId: string) {
+  async getMemberStats(memberId: string, tenantId: string) {
     const member = await this.memberRepo.findById(memberId, tenantId);
     if (!member)
       throw new NotFoundException('Member not found', ErrorCode.NOT_FOUND);

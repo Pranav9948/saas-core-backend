@@ -121,8 +121,7 @@ export class TrainerRepository {
     data: Prisma.TrainerUpdateInput,
     tenantId: string,
   ) {
-    const tenantPrisma = getTenantPrisma(prisma, tenantId);
-    return tenantPrisma.trainer.update({ where: { id }, data });
+    return prisma.trainer.update({ where: { id, tenantId }, data });
   }
 
   async delete(id: string, tenantId: string, tx?: Prisma.TransactionClient) {

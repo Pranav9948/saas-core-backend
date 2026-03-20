@@ -42,9 +42,7 @@ export class TenantRepository {
   }
 
   async findById(tenantId: string) {
-    const tenantPrisma = getTenantPrisma(prisma, tenantId);
-
-    return tenantPrisma.tenant.findUnique({
+    return prisma.tenant.findUnique({
       where: { id: tenantId },
       select: {
         id: true,
@@ -73,9 +71,7 @@ export class TenantRepository {
   }
 
   async updateTenant(tenantId: string, data: any) {
-    const tenantPrisma = getTenantPrisma(prisma, tenantId);
-
-    return tenantPrisma.tenant.update({
+    return prisma.tenant.update({
       where: {
         id: tenantId,
       },
@@ -95,9 +91,7 @@ export class TenantRepository {
   }
 
   async updateLogo(tenantId: string, logoUrl: string) {
-    const tenantPrisma = getTenantPrisma(prisma, tenantId);
-
-    return tenantPrisma.tenant.update({
+    return prisma.tenant.update({
       where: { id: tenantId },
       data: {
         logoUrl,
@@ -106,8 +100,7 @@ export class TenantRepository {
   }
 
   async userExistsInTenant(email: string, tenantId: string) {
-    const tenantPrisma = getTenantPrisma(prisma, tenantId);
-    const user = await tenantPrisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { email },
       include: {
         tenants: true,
@@ -134,9 +127,7 @@ export class TenantRepository {
     user: any;
     role: string;
   }) {
-    const tenantPrisma = getTenantPrisma(prisma, tenantId);
-
-    return tenantPrisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx) => {
       let existingUser = await tx.user.findUnique({
         where: { email: user.email },
       });

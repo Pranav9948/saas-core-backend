@@ -176,7 +176,7 @@ export class MemberRepository {
     }
 
     return prisma.member.update({
-      where: { id: existing.id },
+      where: { id: existing.id, tenantId },
       data: {
         status: 'DELETED',
       },
@@ -184,10 +184,8 @@ export class MemberRepository {
   }
 
   async getAttendanceHistory(memberId: string, tenantId: string) {
-    const tenantPrisma = getTenantPrisma(prisma, tenantId);
-
-    return tenantPrisma.attendance.findMany({
-      where: { memberId },
+    return prisma.attendance.findMany({
+      where: { memberId, tenantId },
       orderBy: { checkIn: 'desc' },
       select: {
         id: true,

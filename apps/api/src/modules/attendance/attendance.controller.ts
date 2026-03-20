@@ -45,7 +45,7 @@ export const getAttendanceByDate = async (
   try {
     const tenantId = req.user!.tenantId;
     const date = req.query.date as string;
-    const data = await attendanceService.getDailyAttendance(date, tenantId);
+    const data = await attendanceService.getDailyAttendance(tenantId, date);
     res.status(200).json({ success: true, data });
   } catch (error) {
     next(error);
