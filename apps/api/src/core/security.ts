@@ -6,8 +6,8 @@ const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET!;
 
 export interface AccessTokenPayload {
   userId: string;
-  role: string;
   tenantId: string;
+  roleId: string;
 }
 
 export interface RefreshTokenPayload {

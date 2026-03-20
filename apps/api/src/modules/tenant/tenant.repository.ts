@@ -59,14 +59,20 @@ export class TenantRepository {
     });
   }
 
+  async findTenantUser(userId: string, tenantId: string) {
+    return prisma.tenantUser.findUnique({
+      where: {
+        userId_tenantId: {
+          userId,
+          tenantId,
+        },
+      },
+    });
+  }
+
   async findTenantByUserId(userId: string) {
     return prisma.tenantUser.findFirst({
-      where: {
-        userId: userId,
-      },
-      include: {
-        tenant: true,
-      },
+      where: { userId },
     });
   }
 

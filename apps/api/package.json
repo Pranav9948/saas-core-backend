@@ -10,7 +10,11 @@
     "start": "npx prisma migrate deploy && node dist/index.js",
     "db:sync": "prisma format && prisma migrate dev",
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules NODE_ENV=test jest --runInBand --forceExit",
-    "pretest": "dotenv -p .env.test -- npx prisma db push --accept-data-loss"
+    "pretest": "dotenv -p .env.test -- npx prisma db push --accept-data-loss",
+    "seed": "tsx prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "keywords": [],
   "author": "",
@@ -59,6 +63,7 @@
     "prisma": "^7.3.0",
     "supertest": "^7.2.2",
     "ts-jest": "^29.4.6",
+    "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "tsc-alias": "^1.8.16",
     "tsconfig-paths": "^4.2.0",
