@@ -105,7 +105,7 @@ export class UserRepository {
   }
 
   async findByEmailGlobal(email: string) {
-    return prisma.user.findUnique({
+    return prisma.user.findFirst({
       where: {
         email,
       },

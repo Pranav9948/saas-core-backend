@@ -8,42 +8,41 @@ datasource db {
 }
 
 model Tenant {
-  id           String   @id @default(uuid()) @db.Uuid
-  name         String
-  slug         String   @unique
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-  address      String
-  city         String
-  contactEmail String   @map("contact_email")
-  contactPhone String   @map("contact_phone")
-  country      String
-  timezone     String   @default("UTC")
-  logoUrl      String?  @map("logo_url")
-
-  attendance   Attendance[]
-  members      Member[]
-  refreshToken RefreshToken[]
-  tenantUsers  TenantUser[]
-  trainers     Trainer[]
-  roles        Role[]
+  id               String         @id @default(uuid()) @db.Uuid
+  name             String
+  slug             String         @unique
+  isActive         Boolean        @default(true) @map("is_active")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  address          String
+  city             String
+  contactEmail     String         @map("contact_email")
+  contactPhone     String         @map("contact_phone")
+  country          String
+  timezone         String         @default("UTC")
+  logoUrl          String?        @map("logo_url")
+  stripeCustomerId String?        @unique
+  attendance       Attendance[]
+  members          Member[]
+  refreshToken     RefreshToken[]
+  roles            Role[]
+  tenantUsers      TenantUser[]
+  trainers         Trainer[]
+  subscriptions    Subscription[]
 
   @@map("tenants")
 }
 
 model TenantUser {
-  id       String @id @default(uuid()) @db.Uuid
-  userId   String @db.Uuid
-  tenantId String @db.Uuid
-
-  roleId  String? @db.Uuid
-  roleRef Role?   @relation(fields: [roleId], references: [id])
-
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  tenantId  String   @db.Uuid
+  role      String   @default("STAFF")
   createdAt DateTime @default(now())
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId    String?  @db.Uuid
+  roleRef   Role?    @relation(fields: [roleId], references: [id])
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, tenantId])
   @@map("tenant_users")
@@ -105,30 +104,28 @@ model Trainer {
 }
 
 model SuperAdmin {
-  id           String    @id @default(uuid()) @db.Uuid
-  email        String    @unique
-  passwordHash String    @map("password_hash")
-  firstName    String    @map("first_name")
-  lastName     String    @map("last_name")
-  role         String    @default("SUPER_ADMIN")
-  isActive     Boolean   @default(true) @map("is_active")
-  lastLoginAt  DateTime? @map("last_login_at")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-
+  id           String                   @id @default(uuid()) @db.Uuid
+  email        String                   @unique
+  passwordHash String                   @map("password_hash")
+  firstName    String                   @map("first_name")
+  lastName     String                   @map("last_name")
+  role         String                   @default("SUPER_ADMIN")
+  isActive     Boolean                  @default(true) @map("is_active")
+  lastLoginAt  DateTime?                @map("last_login_at")
+  createdAt    DateTime                 @default(now()) @map("created_at")
+  updatedAt    DateTime                 @updatedAt @map("updated_at")
   refreshToken SuperAdminRefreshToken[]
 
   @@map("super_admins")
 }
 
 model SuperAdminRefreshToken {
-  id           String   @id @default(uuid()) @db.Uuid
-  superAdminId String   @map("super_admin_id") @db.Uuid
-  token        String   @unique
-  expiresAt    DateTime @map("expires_at")
-  createdAt    DateTime @default(now()) @map("created_at")
-
-  superAdmin SuperAdmin @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+  id           String     @id @default(uuid()) @db.Uuid
+  superAdminId String     @map("super_admin_id") @db.Uuid
+  token        String     @unique
+  expiresAt    DateTime   @map("expires_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  superAdmin   SuperAdmin @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
 
   @@map("super_admin_refresh_tokens")
 }
@@ -140,10 +137,9 @@ model Attendance {
   deviceInfo String?   @map("device_info")
   memberId   String    @map("member_id") @db.Uuid
   tenantId   String    @db.Uuid
+  date       DateTime  @db.Date
   member     Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
   tenant     Tenant    @relation(fields: [tenantId], references: [id])
-
-  date DateTime @db.Date
 
   @@unique([memberId, date])
   @@index([memberId, checkIn])
@@ -168,48 +164,44 @@ model InviteToken {
   id        String   @id @default(uuid()) @db.Uuid
   email     String
   tenantId  String   @db.Uuid
-  firstName String   @map("first_name")
-  lastName  String   @map("last_name")
   role      String
   token     String   @unique
   expiresAt DateTime
-
   createdAt DateTime @default(now())
+  firstName String   @map("first_name")
+  lastName  String   @map("last_name")
 
   @@map("invite_tokens")
 }
 
 model Role {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String
-  tenantId  String   @db.Uuid
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id          String           @id @default(uuid()) @db.Uuid
+  name        String
+  tenantId    String           @db.Uuid
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  permissions RolePermission[]
   tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   users       TenantUser[]
-  permissions RolePermission[]
 
   @@unique([name, tenantId])
   @@map("roles")
 }
 
 model Permission {
-  id          String  @id @default(uuid()) @db.Uuid
-  name        String  @unique
+  id          String           @id @default(uuid()) @db.Uuid
+  name        String           @unique
   description String?
-
-  roles RolePermission[]
+  roles       RolePermission[]
 
   @@map("permissions")
 }
 
 model RolePermission {
-  roleId       String @db.Uuid
-  permissionId String @db.Uuid
-
-  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  roleId       String     @db.Uuid
+  permissionId String     @db.Uuid
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@id([roleId, permissionId])
   @@map("role_permissions")
@@ -221,4 +213,68 @@ enum MemberStatus {
   PENDING
   BANNED
   DELETED
+}
+
+model Plan {
+  id            String          @id @default(uuid()) @db.Uuid
+  name          PlanName
+  price         Int
+  currency      String
+  interval      BillingInterval
+  stripePriceId String?         @unique
+
+  features Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subscriptions Subscription[]
+
+  @@unique([name, interval])
+}
+
+enum PlanName {
+  FREE
+  BASIC
+  PRO
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+}
+
+model Subscription {
+  id                   String  @id @default(uuid())
+  tenantId             String  @unique @db.Uuid
+  planId               String  @db.Uuid
+  stripeCustomerId     String?
+  stripeSubscriptionId String? @unique
+
+  status SubscriptionStatus
+
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+
+  cancelAtPeriodEnd Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  plan   Plan   @relation(fields: [planId], references: [id])
+}
+
+model StripeEvent {
+  id        String   @id
+  type      String
+  createdAt DateTime @default(now())
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+  TRIALING
 }

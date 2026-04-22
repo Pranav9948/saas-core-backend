@@ -12,6 +12,7 @@ import { Security } from '@/core/security.js';
 import { getResetPasswordTemplate } from '@/utils/templates.js';
 import { sendEmail } from '@/utils/mail.js';
 import { TenantRepository } from '../tenant/tenant.repository.js';
+import { emailQueue } from '../jobs/queues/email.queue.js';
 
 export class AuthService {
   private tenantService: TenantService;
@@ -63,6 +64,13 @@ export class AuthService {
       user.passwordHash,
     );
     if (!isValid) throw new UnauthorizedException('Invalid email or password');
+
+    await emailQueue.add('test-email', {
+      to: 'test@example.com',
+      subject: 'Test',
+      html: '<p>Hello</p>',
+      tenantId: 'test-tenant',
+    });
 
     return this.generateAuthResponse(user, tenantUser.tenantId);
   }

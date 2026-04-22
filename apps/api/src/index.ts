@@ -17,7 +17,6 @@ process.on('uncaughtException', (error) => {
 const start = async () => {
   try {
     await connectDB();
-
     app.listen(config.PORT, '0.0.0.0', () => {
       logger.info(`🚀 Server running on http://0.0.0.0:${config.PORT}`);
     });

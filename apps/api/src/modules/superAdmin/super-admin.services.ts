@@ -210,6 +210,26 @@ class SuperAdminService {
       },
     };
   }
+
+  async createPlan(data: any) {
+    if (data.name === 'FREE' && data.stripePriceId) {
+      throw new BadRequestException('FREE plan should not have Stripe price');
+    }
+
+    return await superAdminRepo.createPlan(data);
+  }
+
+  async getAllPlans() {
+    return await superAdminRepo.findAllPlans();
+  }
+
+  async updatePlan(id: string, data: any) {
+    return await superAdminRepo.updatePlan(id, data);
+  }
+
+  async deletePlan(id: string) {
+    return await superAdminRepo.deletePlan(id);
+  }
 }
 
 export const superAdminService = new SuperAdminService();

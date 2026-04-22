@@ -8,11 +8,13 @@ import {
 import { ErrorCode } from '@/exceptions/root.js';
 import { Prisma } from '@/generated/prisma/client.js';
 import { prisma } from '@/infra/db.js';
+import { BillingRepository } from '../billing/billing.repository.js';
 
 export class MemberService {
   constructor(
     private trainerRepo = new TrainerRepository(),
     private memberRepo = new MemberRepository(),
+    private billingRepo = new BillingRepository(),
   ) {}
 
   async createMember(
@@ -26,6 +28,9 @@ export class MemberService {
     },
     tenantId: string,
   ) {
+
+    await this.enforceMemberLimit(tenantId)
+
     const existing = await this.memberRepo.findByEmail(data.email, tenantId);
 
     if (existing)
@@ -33,6 +38,20 @@ export class MemberService {
         'Member email already exists',
         ErrorCode.EMAIL_ALREADY_EXISTS,
       );
+
+    const subscription =
+      await this.billingRepo.getSubscriptionWithPlan(tenantId);
+
+    if (!subscription) {
+      throw new Error('Subscription not found');
+    }
+
+    if (subscription.status !== 'ACTIVE') {
+      throw new Error('Subscription inactive');
+    }
+
+    const memberCount = await this.memberRepo.count(tenantId);
+    const maxMembers = (subscription?.plan?.features as any)?.maxMembers;
 
     if (data.assignedTrainerId) {
       const trainer = await this.trainerRepo.findById(
@@ -160,5 +179,31 @@ export class MemberService {
       throw new NotFoundException('Member not found', ErrorCode.NOT_FOUND);
 
     return this.memberRepo.getAttendanceHistory(id, tenantId);
+  }
+
+  async enforceMemberLimit(tenantId: string) {
+    const features = await this.billingRepo.getPlanFeaturesByTenant(tenantId);
+
+    if (!features.maxMembers) return; 
+
+    const count = await prisma.member.count({
+      where: { tenantId },
+    });
+
+    if (count >= features.maxMembers) {
+      throw new BadRequestException(
+        `Member limit reached (${features.maxMembers}). Upgrade your plan.`,
+      );
+    }
+  }
+
+   async enforceFeature(tenantId: string, feature: string) {
+    const features = await this.billingRepo.getPlanFeaturesByTenant(tenantId);
+
+    if (!features[feature]) {
+      throw new BadRequestException(
+        `Feature "${feature}" not available in your plan.`,
+      );
+    }
   }
 }

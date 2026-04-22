@@ -1,4 +1,7 @@
 import { SuperAdminSecurity } from '@/core/super-admin.security.js';
+import { NotFoundException } from '@/exceptions/exceptions.js';
+import { ErrorCode } from '@/exceptions/root.js';
+import { Prisma } from '@/generated/prisma/client.js';
 import { prisma } from '@/infra/db.js';
 
 export class SuperAdminRepository {
@@ -30,7 +33,7 @@ export class SuperAdminRepository {
   }
 
   async findByEmail(email: string) {
-    return prisma.superAdmin.findUnique({
+    return prisma.superAdmin.findFirst({
       where: { email },
     });
   }
@@ -88,6 +91,43 @@ export class SuperAdminRepository {
 
   async countSuperAdmins() {
     return prisma.superAdmin.count();
+  }
+
+  async createPlan(data: Prisma.PlanCreateInput) {
+    return prisma.plan.create({
+      data,
+    });
+  }
+
+  async findAllPlans() {
+    return prisma.plan.findMany({
+      orderBy: { price: 'asc' },
+    });
+  }
+
+  async findPlanById(id: string) {
+    const plan = await prisma.plan.findUnique({
+      where: { id },
+    });
+
+    if (!plan) {
+      throw new NotFoundException('Plan not found', ErrorCode.NOT_FOUND);
+    }
+
+    return plan;
+  }
+
+  async updatePlan(id: string, data: Prisma.PlanUpdateInput) {
+    return prisma.plan.update({
+      where: { id },
+      data,
+    });
+  }
+
+  async deletePlan(id: string) {
+    return prisma.plan.delete({
+      where: { id },
+    });
   }
 }
 

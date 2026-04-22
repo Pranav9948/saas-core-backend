@@ -44,10 +44,27 @@ const envSchema = z.object({
   AWS_REGION: z.string().min(1, 'AWS_REGION is required'),
 
   AWS_S3_BUCKET: z.string().min(1, 'AWS_S3_BUCKET is required'),
+
+  STRIPE_SECRET_KEY: z.string().min(1, 'Stripe Secret Key is required'),
+
+  STRIPE_WEBHOOK_SECRET: z.string().min(1, 'Stripe Webhook Secret is required'),
+
+  FRONTEND_URL: z.string().url('FRONTEND_URL must be a valid URL'),
+
+  SUPER_ADMIN_ACCESS_SECRET: z
+    .string()
+    .min(10, 'SUPER_ADMIN_ACCESS_SECRET must be at least 10 characters'),
+
+  SUPER_ADMIN_REFRESH_SECRET: z
+    .string()
+    .min(10, 'SUPER_ADMIN_REFRESH_SECRET must be at least 10 characters'),
+
+  REDIS_HOST: z.string().min(1, 'REDIS_HOST is required'),
+
+  REDIS_PORT: z.coerce.number().int().positive('REDIS_PORT must be valid'),
 });
 
 const _config = envSchema.safeParse(process.env);
-
 if (!_config.success) {
   console.error('❌ Invalid environment variables:', _config.error.format());
   process.exit(1);

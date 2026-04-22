@@ -2,8 +2,11 @@ import { validate } from './../../middlewares/validate.middleware.js';
 import { Router, type Router as ExpressRouter } from 'express';
 import { superAdminAuthController } from './super-admin.controller.js';
 import {
+  CreatePlanSchema,
+  PlanIdSchema,
   superAdminCreationSchema,
   superAdminLoginSchema,
+  UpdatePlanSchema,
 } from './super-admin.schema.js';
 import {
   authenticateSuperAdmin,
@@ -38,6 +41,32 @@ router.get(
   authenticateSuperAdmin,
   requireSuperAdmin,
   superAdminAuthController.getAllOwnersWithGyms,
+);
+
+router.post(
+  '/create-plan',
+  authenticateSuperAdmin,
+  requireSuperAdmin,
+  validate(CreatePlanSchema),
+  superAdminAuthController.createPlan,
+);
+
+router.get('/get-all-plans', superAdminAuthController.getAllPlans);
+
+router.patch(
+  '/update-plan/:id',
+  authenticateSuperAdmin,
+  requireSuperAdmin,
+  validate(UpdatePlanSchema),
+  superAdminAuthController.updatePlan,
+);
+
+router.delete(
+  '/delete-plan/:id',
+  authenticateSuperAdmin,
+  requireSuperAdmin,
+  validate(PlanIdSchema),
+  superAdminAuthController.deletePlan,
 );
 
 export default router;

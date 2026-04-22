@@ -1,15 +1,23 @@
+import { BillingRepository } from './../billing/billing.repository.js';
 import { Prisma } from '@/generated/prisma/client.js';
 import { prisma } from '../../infra/db.js';
 import { getTenantPrisma } from '@/infra/tenant-prisma.js';
 import { logger } from '@/core/logger.js';
 import { sendEmail } from '@/utils/mail.js';
 import { getInviteUserTemplate } from '@/utils/templates.js';
-import { InternalException } from '@/exceptions/exceptions.js';
+import {
+  InternalException,
+  NotFoundException,
+} from '@/exceptions/exceptions.js';
+import { ErrorCode } from '@/exceptions/root.js';
+import { stripe } from '../billing/stripe.service.js';
 
 export class TenantRepository {
   private getClient(tx?: Prisma.TransactionClient) {
     return tx || prisma;
   }
+
+  constructor(private billingRepo = new BillingRepository()) {}
 
   async createTenantWithOwner(data: { tenant: any; user: any }) {
     return prisma.$transaction(async (tx) => {
@@ -21,11 +29,42 @@ export class TenantRepository {
         data: data.user,
       });
 
+      const ownerRole = await tx.role.findFirst({
+        where: {
+          name: 'OWNER',
+        },
+      });
+
       await tx.tenantUser.create({
         data: {
           userId: user.id,
           tenantId: tenant.id,
           role: 'OWNER',
+          roleId: ownerRole?.id,
+        },
+      });
+
+      const freePlan = await prisma.plan.findFirst({
+        where: { name: 'FREE' },
+      });
+
+      if (!freePlan) {
+        throw new NotFoundException('plan not configured', ErrorCode.NOT_FOUND);
+      }
+
+      await this.billingRepo.createFreeSubscription(tenant.id, freePlan.id, tx);
+
+      const customer = await stripe.customers.create({
+        name: tenant.name,
+        metadata: {
+          tenantId: tenant.id,
+        },
+      });
+
+      await tx.tenant.update({
+        where: { id: tenant.id },
+        data: {
+          stripeCustomerId: customer.id,
         },
       });
 
@@ -55,7 +94,27 @@ export class TenantRepository {
         country: true,
         createdAt: true,
         updatedAt: true,
+
+         subscriptions: {
+         select: {
+          status: true,
+          currentPeriodStart: true,
+          currentPeriodEnd: true,
+          cancelAtPeriodEnd: true,
+
+          plan: {
+            select: {
+              id: true,
+              name: true,
+              interval: true,
+              price: true,
+              features: true,
+            },
+          },
+        },
       },
+    }
+
     });
   }
 
@@ -133,6 +192,10 @@ export class TenantRepository {
     user: any;
     role: string;
   }) {
+    logger.info(
+      `createUserWithTenant :: tenantId:${tenantId},user:${user},role:${role} `,
+    );
+
     return prisma.$transaction(async (tx) => {
       let existingUser = await tx.user.findUnique({
         where: { email: user.email },
@@ -142,11 +205,24 @@ export class TenantRepository {
         existingUser = await tx.user.create({ data: user });
       }
 
+      const roleRecord = await tx.role.findFirst({
+        where: {
+          name: role,
+        },
+      });
+
+      logger.info(`roleRecord : ${roleRecord}`);
+
+      if (!roleRecord) {
+        throw new Error(`Role '${role}' not found for this tenant`);
+      }
+
       await tx.tenantUser.create({
         data: {
           userId: existingUser.id,
           tenantId,
           role,
+          roleId: roleRecord.id,
         },
       });
 
@@ -196,6 +272,64 @@ export class TenantRepository {
   async deleteInvite(id: string) {
     return prisma.inviteToken.delete({
       where: { id },
+    });
+  }
+
+  async updatePlan(
+    tenantId: string,
+    newPlanId: string,
+    interval: 'MONTHLY' | 'YEARLY',
+  ) {
+    return prisma.$transaction(async (tx) => {
+      const existing = await tx.subscription.findUnique({
+        where: { tenantId },
+        include: { plan: true },
+      });
+
+      if (!existing) {
+        throw new Error('Subscription not found');
+      }
+
+      if (existing.planId === newPlanId) {
+        throw new Error('You are already on this plan');
+      }
+
+      const newPlan = await tx.plan.findUnique({
+        where: { id: newPlanId },
+      });
+
+      if (!newPlan) {
+        throw new Error('Target plan not found');
+      }
+
+      if (newPlan.name === 'FREE') {
+        throw new Error('Cannot downgrade to FREE plan');
+      }
+
+      const now = new Date();
+
+      let periodEnd: Date;
+
+      if (interval === 'MONTHLY') {
+        periodEnd = new Date(now.setMonth(now.getMonth() + 1));
+      } else {
+        periodEnd = new Date(now.setFullYear(now.getFullYear() + 1));
+      }
+
+      const updated = await tx.subscription.update({
+        where: { tenantId },
+        data: {
+          planId: newPlanId,
+          status: 'ACTIVE',
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: periodEnd,
+        },
+        include: {
+          plan: true,
+        },
+      });
+
+      return updated;
     });
   }
 }

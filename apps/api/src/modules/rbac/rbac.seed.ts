@@ -86,3 +86,14 @@ export async function seedRolesForAllTenants() {
 
   console.log('✅ Roles + permissions assigned');
 }
+
+async function run() {
+  console.log('🌱 Running RBAC seed...');
+
+  await seedPermissions();
+  await seedRolesForAllTenants();
+
+  console.log('✅ Done');
+}
+
+run().catch(console.error);

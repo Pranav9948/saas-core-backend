@@ -5,13 +5,12 @@ services:
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 2026
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: dev_saas_backend
     ports:
       - '5435:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
-    # HIGHLIGHT: The Healthcheck
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U postgres -d dev_saas_backend']
       interval: 5s
@@ -38,32 +37,48 @@ services:
     restart: always
     ports:
       - '5000:5000'
-    environment:
-  - PORT=${PORT}
-  - DATABASE_URL=${DATABASE_URL}
-  - NODE_ENV=${NODE_ENV}
-  - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
-  - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
-  - MAIL_HOST=${MAIL_HOST}
-  - MAIL_PORT=${MAIL_PORT}
-  - MAIL_USER=${MAIL_USER}
-  - MAIL_PASS=${MAIL_PASS}
-  - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-  - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-  - AWS_REGION=${AWS_REGION}
-  - AWS_S3_BUCKET=${AWS_S3_BUCKET}
-  - SUPER_ADMIN_ACCESS_SECRET=${SUPER_ADMIN_ACCESS_SECRET}
-  - SUPER_ADMIN_REFRESH_SECRET=${SUPER_ADMIN_REFRESH_SECRET}
+    env_file:
+      - ./apps/api/.env
 
-    # HIGHLIGHT: Waiting for the DB to actually be READY
+    environment:
+      CHOKIDAR_USEPOLLING: true
+      DATABASE_URL: ${DATABASE_URL}
+
     volumes:
-      - .:/app # Links your whole project folder to /app in Linux
-      - /app/node_modules # Keeps node_modules inside Linux (prevents Windows conflicts)
+      - .:/app
+      - /app/node_modules
       - /app/apps/api/node_modules
+      - ./apps/api/.env:/app/.env
+
     command: npx tsx watch --tsconfig apps/api/tsconfig.json apps/api/src/index.ts
+
     depends_on:
       postgres:
         condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: saas_worker
+    restart: always
+    command: npm run worker:email
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
 
 volumes:
   pgdata:
