@@ -3,7 +3,7 @@ import { z } from 'zod';
 const MemberBodySchema = z.object({
   email: z.string().email(),
   firstName: z.string().min(2),
-  lastName: z.string().min(2),
+  lastName: z.string().min(1),
   phone: z
     .string()
     .regex(/^\+?[1-9]\d{1,14}$/)

@@ -3,6 +3,10 @@ import { Request, Response, NextFunction } from 'express';
 import { superAdminService } from './super-admin.services.js';
 import { UnauthorizedException } from '@/exceptions/exceptions.js';
 
+type PlanParams = {
+  id: string;
+};
+
 class SuperAdminAuthController {
   async createInitialSuperAdmin(
     req: Request,
@@ -120,6 +124,53 @@ class SuperAdminAuthController {
       res.status(200).json({
         success: true,
         ...result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createPlan(req: Request, res: Response, next: NextFunction) {
+    try {
+      const plan = await superAdminService.createPlan(req.body);
+      res.status(201).json({ success: true, data: plan });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getAllPlans(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const plans = await superAdminService.getAllPlans();
+      res.status(200).json({ success: true, data: plans });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updatePlan(
+    req: Request<PlanParams>,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const plan = await superAdminService.updatePlan(req.params.id, req.body);
+      res.status(200).json({ success: true, data: plan });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deletePlan(
+    req: Request<PlanParams>,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      await superAdminService.deletePlan(req.params.id);
+      res.status(200).json({
+        success: true,
+        message: 'Plan deleted successfully',
       });
     } catch (error) {
       next(error);

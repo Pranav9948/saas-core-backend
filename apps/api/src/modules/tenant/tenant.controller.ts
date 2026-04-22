@@ -6,6 +6,7 @@ import {
 } from '@/exceptions/exceptions.js';
 import { ErrorCode } from '@/exceptions/root.js';
 import { TenantRepository } from '@/modules/tenant/tenant.repository.js';
+import { logger } from '@/core/logger.js';
 
 const tenantRepo = new TenantRepository();
 const tenantService = new TenantService(tenantRepo);
@@ -112,7 +113,7 @@ export const createUserDirect = async (
 ) => {
   try {
     const tenantId = req.user!.tenantId;
-    const inviterRole = req.user!.role;
+    const inviterRole = req.user!.roleId;
 
     const result = await tenantService.createUserDirect(
       tenantId,
@@ -145,5 +146,26 @@ export const acceptInvite = async (
     });
   } catch (err) {
     next(err);
+  }
+};
+
+export const upgradeTenantPlan = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const tenantId = req.user!.tenantId;
+    const { planName, interval } = req.body;
+
+    const result = await tenantService.upgradePlan(
+      tenantId,
+      planName,
+      interval,
+    );
+
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    next(error);
   }
 };

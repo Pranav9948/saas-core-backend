@@ -7,6 +7,7 @@ import trainerRoutes from '../../modules/trainers/trainer.routes.js';
 import attendanceRoutes from '../../modules/attendance/attendance.routes.js';
 import tenantRoutes from '../../modules/tenant/tenant.route.js';
 import superAdminRoutes from '../../modules/superAdmin/super-admin.routes.js';
+import billingRoutes from '../../modules/billing/billing.routes.js';
 
 const router: ExpressRouter = Router();
 
@@ -18,5 +19,6 @@ router.use('/trainers', trainerRoutes);
 router.use('/attendance', attendanceRoutes);
 router.use('/tenant', tenantRoutes);
 router.use('/super-admin', superAdminRoutes);
+router.use('/billing', billingRoutes);
 
 export default router;

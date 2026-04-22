@@ -42,3 +42,20 @@ export const superAdminLoginSchema = z.object({
     password: z.string().min(1, 'Password is required'),
   }),
 });
+
+export const CreatePlanSchema = z.object({
+  body: z.object({
+    name: z.enum(['FREE', 'BASIC', 'PRO']),
+    price: z.number().min(0),
+    currency: z.string(),
+    interval: z.enum(['MONTHLY', 'YEARLY']),
+    stripePriceId: z.string().optional(),
+    features: z.record(z.string(), z.any()),
+  }),
+});
+
+export const UpdatePlanSchema = CreatePlanSchema.partial();
+
+export const PlanIdSchema = z.object({
+  id: z.string().uuid(),
+});

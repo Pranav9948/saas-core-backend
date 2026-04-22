@@ -1,5 +1,5 @@
 import pino from 'pino';
-import { config } from '@/core/config.js';
+import { config } from '../core/config.js';
 
 const isDevLike = ['development', 'test'].includes(config.NODE_ENV);
 

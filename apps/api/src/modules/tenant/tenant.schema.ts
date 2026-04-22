@@ -35,7 +35,7 @@ export const directCreateUserSchema = z.object({
   body: z.object({
     email: z.string().email(),
     firstName: z.string().min(2),
-    lastName: z.string().min(2),
+    lastName: z.string().min(1),
     role: z.enum(['ADMIN', 'STAFF']),
     password: passwordSchema,
   }),
@@ -45,5 +45,12 @@ export const AcceptInviteSchema = z.object({
   body: z.object({
     token: z.string().min(10),
     password: passwordSchema,
+  }),
+});
+
+export const upgradePlanSchema = z.object({
+  body: z.object({
+    planName: z.enum(['BASIC', 'PRO']),
+    interval: z.enum(['MONTHLY', 'YEARLY']),
   }),
 });

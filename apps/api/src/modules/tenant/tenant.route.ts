@@ -6,6 +6,7 @@ import {
   AcceptInviteSchema,
   InviteUserSchema,
   UpdateTenantSchema,
+  upgradePlanSchema,
 } from './tenant.schema.js';
 import { uploadLogo } from '@/middlewares/upload.middleware.js';
 import { PERMISSIONS } from '../rbac/permissions.constants.js';
@@ -58,6 +59,14 @@ router.post(
   authorizePermissions(PERMISSIONS.TENANT_UPDATE),
   validate(InviteUserSchema),
   tenantController.createUserDirect,
+);
+
+router.patch(
+  '/upgrade-plan',
+  authenticate,
+  authorizePermissions(PERMISSIONS.TENANT_UPDATE),
+  validate(upgradePlanSchema),
+  tenantController.upgradeTenantPlan,
 );
 
 export default router;

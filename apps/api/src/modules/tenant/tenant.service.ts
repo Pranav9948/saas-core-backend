@@ -10,11 +10,19 @@ import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { s3 } from '@/infra/s3.js';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
+import { MemberRepository } from '../members/member.repository.js';
+import { prisma } from '@/infra/db.js';
+import { TrainerRepository } from '../trainers/trainer.repository.js';
+import { logger } from '@/core/logger.js';
 
 const slugify = slugifyPkg.default;
 
 export class TenantService {
-  constructor(private tenantRepo: TenantRepository) {}
+  constructor(
+    private tenantRepo: TenantRepository,
+    private memberRepo = new MemberRepository(),
+    private trainerRepo = new TrainerRepository(),
+  ) {}
 
   validateRole(inviterRole: string, targetRole: string) {
     if (inviterRole === 'ADMIN' && targetRole === 'ADMIN') {
@@ -201,5 +209,36 @@ export class TenantService {
     await this.tenantRepo.deleteInvite(invite.id);
 
     return { userId: user.id };
+  }
+
+  async upgradePlan(
+    tenantId: string,
+    planName: 'BASIC' | 'PRO',
+    interval: 'MONTHLY' | 'YEARLY',
+  ) {
+    const targetPlan = await prisma.plan.findUnique({
+      where: { name: planName, interval },
+    });
+
+    if (!targetPlan) throw new Error('Plan not found');
+
+    const memberCount = await this.memberRepo.count(tenantId);
+    const trainerCount = await this.trainerRepo.count(tenantId);
+    const maxMembers = (targetPlan?.features as any)?.maxMembers;
+    const maxTrainers = (targetPlan?.features as any)?.maxTrainers;
+
+    if (maxMembers !== null && memberCount >= maxMembers) {
+      throw new Error(
+        `You already have ${memberCount} members. Upgrade to PRO plan.`,
+      );
+    }
+
+    if (maxTrainers !== null && trainerCount >= maxTrainers) {
+      throw new Error(
+        `You already have ${trainerCount} trainers. Upgrade to PRO plan.`,
+      );
+    }
+
+    return this.tenantRepo.updatePlan(tenantId, targetPlan.id, interval);
   }
 }

@@ -1,0 +1,52 @@
+
+<h1>Choose Your Plan</h1>
+
+{{#each plans}}
+  <div style="border:1px solid #ccc; padding:10px; margin:10px;">
+    <h2>{{this.name}} ({{this.interval}})</h2>
+
+    <p>Price: ₹{{this.price}}</p>
+
+    <p>
+      Max Members:
+      {{#if this.features.maxMembers}}
+        {{this.features.maxMembers}}
+      {{else}}
+        Unlimited
+      {{/if}}
+    </p>
+
+    <form action="http://localhost:5000/api/v1/billing/checkout-session" method="POST">
+      <input type="hidden" name="planId" value="{{this.id}}" />
+      <button type="button" onclick="manualSubmit('{{this.id}}')">Choose Plan</button>
+    </form>
+  </div>
+{{/each}}
+
+
+<script>
+async function manualSubmit(planId) {
+  const token = prompt("enter access token");
+  if (!token) return;
+
+  const response = await fetch('http://localhost:5000/api/v1/billing/checkout-session', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ planId })
+  });
+
+  const {data} = await response.json();
+  console.log('data in manual submit',data)
+
+
+  if (data?.url) {
+    window.location.href = data.url; // Redirect to Stripe
+  } else {
+    console.error(data);
+    alert("Check console for error");
+  }
+}
+</script>
