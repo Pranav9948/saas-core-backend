@@ -8,6 +8,7 @@ import { engine } from 'express-handlebars';
 import path from 'path';
 import { stripe } from './modules/billing/stripe.service.js';
 import { webhookHandler } from './utils/webhookHandler.js';
+import { startAnalyticsCron } from './modules/jobs/schedulers/analytics.scheduler.js';
 
 export const app: Express = express();
 
@@ -22,6 +23,8 @@ app.post(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+startAnalyticsCron();
 
 app.engine(
   'hbs',

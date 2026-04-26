@@ -265,6 +265,16 @@ model Subscription {
   plan   Plan   @relation(fields: [planId], references: [id])
 }
 
+model AttendanceDailyStats {
+  id            String   @id @default(uuid())
+  tenantId      String
+  date          DateTime
+  totalCheckIns Int
+  createdAt     DateTime @default(now())
+
+  @@unique([tenantId, date])
+}
+
 model StripeEvent {
   id        String   @id
   type      String

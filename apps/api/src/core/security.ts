@@ -8,6 +8,7 @@ export interface AccessTokenPayload {
   userId: string;
   tenantId: string;
   roleId: string;
+  role: string;
 }
 
 export interface RefreshTokenPayload {

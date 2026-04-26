@@ -13,6 +13,9 @@ import { getResetPasswordTemplate } from '@/utils/templates.js';
 import { sendEmail } from '@/utils/mail.js';
 import { TenantRepository } from '../tenant/tenant.repository.js';
 import { emailQueue } from '../jobs/queues/email.queue.js';
+import { sendEmailJob } from '@/modules/jobs/producers/email.producer.js';
+import { eventBus } from '../events/event-bus.js';
+import { EVENTS } from '../events/events.js';
 
 export class AuthService {
   private tenantService: TenantService;
@@ -65,11 +68,9 @@ export class AuthService {
     );
     if (!isValid) throw new UnauthorizedException('Invalid email or password');
 
-    await emailQueue.add('test-email', {
-      to: 'test@example.com',
-      subject: 'Test',
-      html: '<p>Hello</p>',
-      tenantId: 'test-tenant',
+    await eventBus.emit(EVENTS.USER_LOGGED_IN, {
+      email: user.email,
+      tenantId: tenantUser.tenantId,
     });
 
     return this.generateAuthResponse(user, tenantUser.tenantId);
@@ -190,6 +191,7 @@ export class AuthService {
       userId: user.id,
       tenantId,
       roleId: tenantUser.roleId!,
+      role: tenantUser.role,
     });
 
     const refreshToken = this.security.generateRefreshToken({

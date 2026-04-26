@@ -17,9 +17,10 @@ RUN npm install -g pnpm
 # Copy ALL node_modules to ensure symlinks work
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
-COPY . .
-
+COPY apps/api/prisma ./apps/api/prisma
 RUN npx prisma generate --schema=./apps/api/prisma/schema.prisma
+
+COPY . .
 # Fix: Use pnpm exec to find tsc even if it's hoisted
 RUN cd apps/api && pnpm exec tsc && pnpm exec tsc-alias
 
@@ -30,8 +31,10 @@ WORKDIR /app
 RUN npm install -g pnpm
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
-COPY . .
+COPY apps/api/prisma ./apps/api/prisma
+RUN npx prisma generate --schema=./apps/api/prisma/schema.prisma
 
+COPY . .
 
 RUN if [ ! -d "./apps/api/node_modules" ] && [ -d "./node_modules" ]; then \
       ln -s /app/node_modules /app/apps/api/node_modules; \
@@ -49,18 +52,15 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 expressapp
 
-COPY --from=builder /app/apps/api/dist ./dist
-COPY --from=builder /app/apps/api/package.json ./
-COPY --from=builder /app/apps/api/prisma ./prisma
+COPY --chown=expressapp:nodejs --from=builder /app/apps/api/dist ./dist
+COPY --chown=expressapp:nodejs --from=builder /app/apps/api/package.json ./
+COPY --chown=expressapp:nodejs --from=builder /app/apps/api/prisma ./prisma
 # Copy root node_modules for the production run
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules 
-COPY --from=builder /app/apps/api/prisma.config.ts ./
+COPY --chown=expressapp:nodejs --from=builder /app/node_modules ./node_modules
+COPY --chown=expressapp:nodejs --from=builder /app/apps/api/node_modules ./apps/api/node_modules 
+COPY --chown=expressapp:nodejs --from=builder /app/apps/api/prisma.config.ts ./
 
-# Added this line to give the user permission to the folder
-USER root
-RUN chown -R expressapp:nodejs /app
-
+# We no longer need to run a recursive chown as files are copied with the right ownership
 USER expressapp
 EXPOSE 5000
 # We create the .env in the root /app and then run migrate pointing specifically to the config

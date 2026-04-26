@@ -27,7 +27,8 @@ export const createCheckoutSession = async (
       data: { url },
     });
   } catch (error) {
-    console.error('❌ STRIPE ERROR:', error.message);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('❌ STRIPE ERROR:', message);
     console.log('error in createCheckoutSession ', error);
     next(error);
   }

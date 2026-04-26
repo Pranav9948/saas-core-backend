@@ -118,12 +118,9 @@ export class UserRepository {
     tenantId: string,
     tx?: Prisma.TransactionClient,
   ) {
-    return this.getClient(tx).user.update({
-      where: {
-        id,
-        tenantId,
-      },
-      data: { role },
-    });
+    // `getTenantPrisma` needs a PrismaClient (not TransactionClient).
+    // Role updates are on `User`, which is global anyway.
+    const tenantPrisma = getTenantPrisma(prisma, tenantId);
+    return tenantPrisma.user.update({ where: { id }, data: { role } });
   }
 }

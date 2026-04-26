@@ -113,7 +113,7 @@ export const createUserDirect = async (
 ) => {
   try {
     const tenantId = req.user!.tenantId;
-    const inviterRole = req.user!.roleId;
+    const inviterRole = req.user!.role;
 
     const result = await tenantService.createUserDirect(
       tenantId,

@@ -1,3 +1,4 @@
+import { logger } from '@/core/logger.js';
 import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
@@ -11,6 +12,7 @@ const transporter = nodemailer.createTransport({
 });
 
 export const sendEmail = async (to: string, subject: string, html: string) => {
+  logger.info(`sendEmail sendEmail ${to},${subject},${html}`);
   await transporter.sendMail({
     from: `"Support Team" <${process.env.MAIL_USER}>`,
     to,

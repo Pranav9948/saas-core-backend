@@ -5,6 +5,7 @@ declare global {
         userId: string;
         tenantId: string;
         roleId: string;
+        role: string;
       };
     }
   }

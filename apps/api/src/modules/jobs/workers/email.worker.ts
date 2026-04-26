@@ -15,7 +15,15 @@ export const emailWorker = new Worker(
           throw new Error(`Unknown job type: ${job.name}`);
       }
     } catch (error) {
-      logger.error({ jobId: job.id, error }, '❌ Email job failed');
+      logger.error(
+        {
+          jobId: job.id,
+          err: error instanceof Error ? error.message : error,
+          stack: error instanceof Error ? error.stack : undefined,
+          data: job.data,
+        },
+        '❌ Email job failed',
+      );
       throw error;
     }
   },
