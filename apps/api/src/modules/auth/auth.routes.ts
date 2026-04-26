@@ -20,7 +20,6 @@ router.get('/generate-new-tokens', authController.rotateRefreshToken);
 
 router.post(
   '/forgot-password',
-  authenticate,
   validate(ForgotPasswordSchema),
   authController.forgotPassword,
 );

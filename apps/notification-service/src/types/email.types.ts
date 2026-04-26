@@ -1,5 +1,3 @@
-import { emailQueue } from '../queues/email.queue.js';
-
 export type EmailJobData =
   | {
       type: 'RESET_PASSWORD';
@@ -27,9 +25,3 @@ export type EmailJobData =
       tenantId: string;
       payload: Record<string, never>;
     };
-
-export const sendEmailJob = async (data: EmailJobData) => {
-  await emailQueue.add(`email:${data.type}`, data, {
-    jobId: `email-${data.type}-${data.to}`,
-  });
-};

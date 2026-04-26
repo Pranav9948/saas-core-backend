@@ -132,6 +132,7 @@ export class TenantService {
       data.firstname,
       tenantDetails?.name ?? 'gym sass team',
       data.role,
+      tenantId,
     );
 
     return { email: data.email };

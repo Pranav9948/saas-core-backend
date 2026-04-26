@@ -3,8 +3,8 @@ import { Prisma } from '@/generated/prisma/client.js';
 import { prisma } from '../../infra/db.js';
 import { getTenantPrisma } from '@/infra/tenant-prisma.js';
 import { logger } from '@/core/logger.js';
-import { sendEmail } from '@/utils/mail.js';
-import { getInviteUserTemplate } from '@/utils/templates.js';
+import { eventBus } from '../events/event-bus.js';
+import { EVENTS } from '../events/events.js';
 import {
   InternalException,
   NotFoundException,
@@ -236,13 +236,16 @@ export class TenantRepository {
     name: string,
     gymName: string,
     role: string,
+    tenantId: string,
   ) {
-    try {
-      const html = getInviteUserTemplate(link, name, gymName, role);
-      await sendEmail(email, 'send invite mail', html);
-    } catch (error) {
-      throw new InternalException('Email could not be sent', error);
-    }
+    await eventBus.emit(EVENTS.USER_INVITED, {
+      email,
+      link,
+      name,
+      gymName,
+      role,
+      tenantId,
+    });
   }
 
   async findInviteByToken(token: string) {
