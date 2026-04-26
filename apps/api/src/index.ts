@@ -2,6 +2,7 @@ import { app } from './app.js';
 import { config } from '@/core/config.js';
 import { logger } from '@/core/logger.js';
 import { connectDB } from '@/infra/db.js';
+import { registerEvents } from '@/modules/events/register.js';
 
 // Global process guards
 process.on('unhandledRejection', (reason) => {
@@ -17,6 +18,7 @@ process.on('uncaughtException', (error) => {
 const start = async () => {
   try {
     await connectDB();
+    registerEvents();
     app.listen(config.PORT, '0.0.0.0', () => {
       logger.info(`🚀 Server running on http://0.0.0.0:${config.PORT}`);
     });

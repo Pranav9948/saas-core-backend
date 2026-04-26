@@ -1,15 +1,28 @@
 import { Worker } from 'bullmq';
 import { emailProcessor } from '../processors/email.processor.js';
+import { EmailJobData } from '../types/email.types.js';
+import { logger } from '../core/logger.js';
 import { redisConfig } from '../config/redis.js';
-import { logger } from '../../../core/logger.js';
 
 export const emailWorker = new Worker(
   'email-queue',
   async (job) => {
     try {
+      const data = job.data as EmailJobData;
+      logger.info(`data in email worker ${JSON.stringify(job, null, 2)}`);
       switch (job.name) {
-        case 'send-email':
-          return await emailProcessor.send(job.data);
+        case 'email:RESET_PASSWORD':
+          return await emailProcessor.resetPassword(
+            data as Extract<EmailJobData, { type: 'RESET_PASSWORD' }>,
+          );
+        case 'email:INVITE_USER':
+          return await emailProcessor.inviteUser(
+            data as Extract<EmailJobData, { type: 'INVITE_USER' }>,
+          );
+        case 'email:LOGIN_ALERT':
+          return await emailProcessor.loginAlert(
+            data as Extract<EmailJobData, { type: 'LOGIN_ALERT' }>,
+          );
 
         default:
           throw new Error(`Unknown job type: ${job.name}`);

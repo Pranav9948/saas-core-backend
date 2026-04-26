@@ -155,8 +155,7 @@ export const forgotPassword = async (
   next: NextFunction,
 ) => {
   try {
-    const tenantId = req.user!.tenantId;
-    await authService.forgotPassword(req.body.email, tenantId);
+    await authService.forgotPassword(req.body.email);
 
     res.status(200).json({
       success: true,

@@ -8,10 +8,11 @@ export class UserRepository {
     return tx || prisma;
   }
 
-  async findByEmail(email: string, tenantId: string) {
-    const tenantPrisma = getTenantPrisma(prisma, tenantId);
-
-    return tenantPrisma.user.findUnique({ where: { email } });
+  async findByEmail(email: string, tenantId?: string) {
+    const client = tenantId ? getTenantPrisma(prisma, tenantId) : prisma;
+    return client.user.findUnique({
+      where: { email },
+    });
   }
 
   async findById(id: string) {
@@ -31,6 +32,14 @@ export class UserRepository {
         role: true,
       },
     });
+  }
+
+  async getTenantIdByUserId(userId: string) {
+    const connection = await prisma.tenantUser.findFirst({
+      where: { userId },
+      select: { tenantId: true },
+    });
+    return connection?.tenantId;
   }
 
   async updateResetToken(

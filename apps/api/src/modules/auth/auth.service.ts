@@ -9,11 +9,8 @@ import {
 } from '@/exceptions/exceptions.js';
 import { ErrorCode } from '@/exceptions/root.js';
 import { Security } from '@/core/security.js';
-import { getResetPasswordTemplate } from '@/utils/templates.js';
-import { sendEmail } from '@/utils/mail.js';
 import { TenantRepository } from '../tenant/tenant.repository.js';
 import { emailQueue } from '../jobs/queues/email.queue.js';
-import { sendEmailJob } from '@/modules/jobs/producers/email.producer.js';
 import { eventBus } from '../events/event-bus.js';
 import { EVENTS } from '../events/events.js';
 
@@ -98,9 +95,15 @@ export class AuthService {
     await this.userRepo.deleteRefreshToken(token, tenantId);
   }
 
-  async forgotPassword(email: string, tenantId: string) {
-    const user = await this.userRepo.findByEmail(email, tenantId);
+  async forgotPassword(email: string) {
+    const user = await this.userRepo.findByEmail(email);
     if (!user) return;
+
+    const tenantId = await this.userRepo.getTenantIdByUserId(user.id);
+
+    if (!tenantId) {
+      throw new Error('User is not associated with any tenant.');
+    }
 
     const resetToken = crypto.randomBytes(32).toString('hex');
     const expiry = new Date(Date.now() + 1 * 60 * 60 * 1000);
@@ -108,12 +111,12 @@ export class AuthService {
     await this.userRepo.updateResetToken(user.id, resetToken, expiry, tenantId);
 
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
-    try {
-      const html = getResetPasswordTemplate(resetUrl, user.firstName);
-      await sendEmail(user.email, 'Reset your password', html);
-    } catch (error) {
-      throw new InternalException('Email could not be sent', error);
-    }
+    await eventBus.emit(EVENTS.PASSWORD_RESET_REQUESTED, {
+      email: user.email,
+      tenantId,
+      resetUrl,
+      firstName: user.firstName,
+    });
   }
 
   async resetPassword(data: any, tenantId: string) {
