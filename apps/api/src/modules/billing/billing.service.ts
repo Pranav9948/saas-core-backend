@@ -11,7 +11,6 @@ export class BillingService {
   constructor(private billingRepo = new BillingRepository()) {}
 
   async createCheckoutSession(tenantId: string, planId: string) {
-    
     const tenant = await this.billingRepo.getTenantWithSubscription(tenantId);
 
     if (!tenant) {
@@ -86,12 +85,24 @@ export class BillingService {
       return;
     }
 
-    await prisma.stripeEvent.create({
-      data: {
-        id: event.id,
-        type: event.type,
-      },
-    });
+    try {
+      await prisma.stripeEvent.create({
+        data: {
+          id: event.id,
+          type: event.type,
+        },
+      });
+    } catch (error: any) {
+      if (error.code === 'P2002') {
+        logger.warn({
+          msg: '⚠️ Duplicate event skipped (DB-level)',
+          eventId: event.id,
+        });
+        return;
+      }
+
+      throw error;
+    }
 
     const eventType = event.type as string;
 

@@ -4,16 +4,21 @@ import Stripe from 'stripe';
 import { prisma } from '@/infra/db.js';
 import { BillingService } from '@/modules/billing/billing.service.js';
 import { logger } from '@/core/logger.js';
+import { enqueueStripeEvent } from '@/modules/jobs/producers/stripe.producer.js';
 
 const billingService = new BillingService();
 
-export const webhookHandler = async (req: Request, res: Response) => {
+export const webhookHandler = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   const sig = req.headers['stripe-signature'];
   logger.info('📩 Incoming Stripe webhook');
 
   if (!sig || typeof sig !== 'string') {
     logger.error('❌ Missing Stripe signature');
-    return res.status(400).send('Missing signature');
+    res.status(400).send('Missing signature');
+    return;
   }
 
   let event: Stripe.Event;
@@ -36,7 +41,8 @@ export const webhookHandler = async (req: Request, res: Response) => {
       msg: '❌ Signature verification failed',
       error: err.message,
     });
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+    res.status(400).send(`Webhook Error: ${err.message}`);
+    return;
   }
 
   try {
@@ -46,7 +52,7 @@ export const webhookHandler = async (req: Request, res: Response) => {
       object: event.data.object?.object,
     });
 
-    await billingService.handleEvent(event);
+    await enqueueStripeEvent(event);
 
     logger.info({
       msg: '✅ Event processed successfully',
@@ -55,6 +61,7 @@ export const webhookHandler = async (req: Request, res: Response) => {
     });
 
     res.status(200).json({ received: true });
+    return;
   } catch (err: any) {
     logger.error({
       msg: '❌ Error handling event',
@@ -63,6 +70,6 @@ export const webhookHandler = async (req: Request, res: Response) => {
       error: err.message,
     });
     res.status(500).send('Webhook handler failed');
+    return;
   }
 };
-2;

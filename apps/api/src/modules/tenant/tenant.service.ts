@@ -217,7 +217,7 @@ export class TenantService {
     interval: 'MONTHLY' | 'YEARLY',
   ) {
     const targetPlan = await prisma.plan.findUnique({
-      where: { name: planName, interval },
+      where: { name_interval: { name: planName, interval } },
     });
 
     if (!targetPlan) throw new Error('Plan not found');

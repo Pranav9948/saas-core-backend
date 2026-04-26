@@ -12,7 +12,7 @@ class SuperAdminAuthController {
     req: Request,
     res: Response,
     next: NextFunction,
-  ) {
+  ): Promise<void> {
     try {
       const { email, password, firstName, lastName } = req.body;
 
@@ -28,20 +28,23 @@ class SuperAdminAuthController {
         message: 'Super admin created successfully',
         data: result,
       });
+      return;
     } catch (error) {
       next(error);
+      return;
     }
   }
 
-  async login(req: Request, res: Response, next: NextFunction) {
+  async login(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { email, password } = req.body;
 
       if (!email || !password) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Email and password are required',
         });
+        return;
       }
 
       const { superAdmin, accessToken, refreshToken } =
@@ -62,12 +65,18 @@ class SuperAdminAuthController {
           superAdmin,
         },
       });
+      return;
     } catch (error) {
       next(error);
+      return;
     }
   }
 
-  async rotateRefreshToken(req: Request, res: Response, next: NextFunction) {
+  async rotateRefreshToken(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
     try {
       const oldToken = req.cookies.refreshToken;
       if (!oldToken) throw new UnauthorizedException('No refresh token');
@@ -86,12 +95,14 @@ class SuperAdminAuthController {
         success: true,
         data: { accessToken },
       });
+      return;
     } catch (error) {
       next(error);
+      return;
     }
   }
 
-  async logout(req: Request, res: Response, next: NextFunction) {
+  async logout(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const refreshToken = req.cookies.refreshToken;
 
@@ -109,12 +120,18 @@ class SuperAdminAuthController {
         success: true,
         message: 'Logged out successfully',
       });
+      return;
     } catch (error) {
       next(error);
+      return;
     }
   }
 
-  async getAllOwnersWithGyms(req: Request, res: Response, next: NextFunction) {
+  async getAllOwnersWithGyms(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
     try {
       const page = Math.max(Number(req.query.page) || 1, 1);
       const limit = Math.min(Number(req.query.limit) || 10, 50);
@@ -125,26 +142,40 @@ class SuperAdminAuthController {
         success: true,
         ...result,
       });
+      return;
     } catch (error) {
       next(error);
+      return;
     }
   }
 
-  async createPlan(req: Request, res: Response, next: NextFunction) {
+  async createPlan(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
     try {
       const plan = await superAdminService.createPlan(req.body);
       res.status(201).json({ success: true, data: plan });
+      return;
     } catch (error) {
       next(error);
+      return;
     }
   }
 
-  async getAllPlans(_req: Request, res: Response, next: NextFunction) {
+  async getAllPlans(
+    _req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
     try {
       const plans = await superAdminService.getAllPlans();
       res.status(200).json({ success: true, data: plans });
+      return;
     } catch (error) {
       next(error);
+      return;
     }
   }
 
@@ -152,12 +183,14 @@ class SuperAdminAuthController {
     req: Request<PlanParams>,
     res: Response,
     next: NextFunction,
-  ) {
+  ): Promise<void> {
     try {
       const plan = await superAdminService.updatePlan(req.params.id, req.body);
       res.status(200).json({ success: true, data: plan });
+      return;
     } catch (error) {
       next(error);
+      return;
     }
   }
 
@@ -165,15 +198,17 @@ class SuperAdminAuthController {
     req: Request<PlanParams>,
     res: Response,
     next: NextFunction,
-  ) {
+  ): Promise<void> {
     try {
       await superAdminService.deletePlan(req.params.id);
       res.status(200).json({
         success: true,
         message: 'Plan deleted successfully',
       });
+      return;
     } catch (error) {
       next(error);
+      return;
     }
   }
 }

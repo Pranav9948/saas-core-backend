@@ -5,8 +5,14 @@ import { logger } from '@/core/logger.js';
 export const handleCreateUser = async (req: Request, res: Response) => {
   try {
     const tenantId = req.user!.tenantId;
-    const { email, name } = req.body;
-    const user = await UserService.createUser(email, name, tenantId);
+    const { email, firstName, lastName, password } = req.body;
+    const user = await UserService.createUser(
+      email,
+      firstName,
+      lastName,
+      password,
+      tenantId,
+    );
     res.status(201).json(user);
   } catch (error) {
     logger.error({ error }, 'User creation failed');

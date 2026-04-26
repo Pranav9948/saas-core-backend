@@ -45,8 +45,7 @@ services:
       DATABASE_URL: ${DATABASE_URL}
 
     volumes:
-      - .:/app
-      - /app/node_modules
+      - ./apps:/app/apps
       - /app/apps/api/node_modules
       - ./apps/api/.env:/app/.env
 
@@ -70,15 +69,76 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    container_name: saas_worker
+      target: development
+    container_name: saas_email_worker
     restart: always
-    command: npm run worker:email
-    depends_on:
-      redis:
-        condition: service_healthy
+    env_file:
+      - ./apps/api/.env
     environment:
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      CHOKIDAR_USEPOLLING: true
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/api/node_modules
+      - ./apps/api/.env:/app/.env
+    command: npx tsx watch --tsconfig apps/api/tsconfig.json apps/api/src/modules/jobs/workers/email.worker.ts
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker-stripe:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: development
+
+    container_name: saas_worker_stripe
+
+    env_file:
+      - ./apps/api/.env
+
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+    volumes:
+      - ./apps:/app/apps
+      - /app/apps/api/node_modules
+      - ./apps/api/.env:/app/.env
+
+    command: npx tsx watch --tsconfig apps/api/tsconfig.json apps/api/src/modules/jobs/workers/stripe.worker.ts
+
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker-analytics:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: development
+
+    container_name: saas_worker_analytics
+
+    env_file:
+      - ./apps/api/.env
+
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+    volumes:
+      - ./apps:/app/apps
+      - /app/apps/api/node_modules
+      - ./apps/api/.env:/app/.env
+
+    command: npx tsx watch --tsconfig apps/api/tsconfig.json apps/api/src/modules/jobs/workers/analytics.worker.ts
+
+    depends_on:
+      redis:
+        condition: service_healthy
 
 volumes:
   pgdata:
