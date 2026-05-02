@@ -6,6 +6,7 @@ RUN npm install -g pnpm
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/api/package.json ./apps/api/
+COPY packages/core/package.json ./packages/core/
 
 # Fix: Force pnpm to create a flat node_modules so files aren't missing across stages
 RUN pnpm install --frozen-lockfile --shamefully-hoist
@@ -21,6 +22,8 @@ COPY apps/api/prisma ./apps/api/prisma
 RUN npx prisma generate --schema=./apps/api/prisma/schema.prisma
 
 COPY . .
+# Build shared workspace package(s) first
+RUN cd packages/core && pnpm exec tsc
 # Fix: Use pnpm exec to find tsc even if it's hoisted
 RUN cd apps/api && pnpm exec tsc && pnpm exec tsc-alias
 
@@ -35,6 +38,10 @@ COPY apps/api/prisma ./apps/api/prisma
 RUN npx prisma generate --schema=./apps/api/prisma/schema.prisma
 
 COPY . .
+
+## In dev, `tsx` executes TS directly but `@saas/core` exports `dist/*`,
+## so we must compile the workspace package inside the image.
+RUN cd packages/core && pnpm exec tsc
 
 RUN if [ ! -d "./apps/api/node_modules" ] && [ -d "./node_modules" ]; then \
       ln -s /app/node_modules /app/apps/api/node_modules; \

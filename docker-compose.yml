@@ -38,16 +38,14 @@ services:
     ports:
       - '5000:5000'
     env_file:
-      - ./apps/api/.env
+      - ./apps/api/.env.development
 
     environment:
       CHOKIDAR_USEPOLLING: true
-      DATABASE_URL: ${DATABASE_URL}
 
     volumes:
       - ./apps:/app/apps
       - /app/apps/api/node_modules
-      - ./apps/api/.env:/app/.env
 
     command: npx tsx watch --tsconfig apps/api/tsconfig.json apps/api/src/index.ts
 
@@ -65,28 +63,45 @@ services:
       timeout: 3s
       retries: 5
 
-  worker:
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: saas_mailhog
+    restart: always
+    ports:
+      - '1025:1025' # SMTP
+      - '8025:8025' # Web UI
+
+  notification-service:
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
-      target: development
-    container_name: saas_email_worker
+      dockerfile: apps/notification-service/Dockerfile
+    container_name: saas_notification_service
     restart: always
     env_file:
-      - ./apps/api/.env
+      - ./apps/notification-service/.env.development
     environment:
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      CHOKIDAR_USEPOLLING: true
+    ports:
+      - '4001:4001'
     volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/apps/api/node_modules
-      - ./apps/api/.env:/app/.env
-    command: npx tsx watch --tsconfig apps/api/tsconfig.json apps/api/src/modules/jobs/workers/email.worker.ts
+      - ./apps/notification-service:/app/apps/notification-service
+      - /app/apps/notification-service/node_modules
+    command: npx tsx apps/notification-service/src/index.ts
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'wget -qO- http://127.0.0.1:4001/health >/dev/null 2>&1 || exit 1',
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
     depends_on:
       redis:
         condition: service_healthy
+      mailhog:
+        condition: service_started
 
   worker-stripe:
     build:
@@ -97,7 +112,7 @@ services:
     container_name: saas_worker_stripe
 
     env_file:
-      - ./apps/api/.env
+      - ./apps/api/.env.development
 
     environment:
       REDIS_HOST: redis
@@ -106,7 +121,6 @@ services:
     volumes:
       - ./apps:/app/apps
       - /app/apps/api/node_modules
-      - ./apps/api/.env:/app/.env
 
     command: npx tsx watch --tsconfig apps/api/tsconfig.json apps/api/src/modules/jobs/workers/stripe.worker.ts
 
@@ -123,7 +137,7 @@ services:
     container_name: saas_worker_analytics
 
     env_file:
-      - ./apps/api/.env
+      - ./apps/api/.env.development
 
     environment:
       REDIS_HOST: redis
@@ -132,7 +146,6 @@ services:
     volumes:
       - ./apps:/app/apps
       - /app/apps/api/node_modules
-      - ./apps/api/.env:/app/.env
 
     command: npx tsx watch --tsconfig apps/api/tsconfig.json apps/api/src/modules/jobs/workers/analytics.worker.ts
 
