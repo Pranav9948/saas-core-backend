@@ -1,7 +1,10 @@
 import { logger } from '@/core/logger.js';
 import { eventBus } from '@/modules/events/event-bus.js';
 import { EVENTS } from '@/modules/events/events.js';
-import { sendEmailJob } from '@/modules/jobs/producers/email.producer.js';
+import {
+  sendEmailJob,
+  sendNotificationJob,
+} from '@/modules/jobs/producers/email.producer.js';
 
 export const registerEmailListeners = () => {
   eventBus.on(EVENTS.USER_LOGGED_IN, async (data) => {
@@ -18,7 +21,8 @@ export const registerEmailListeners = () => {
   eventBus.on(EVENTS.PASSWORD_RESET_REQUESTED, async (data) => {
     console.log('📩 EVENT RECEIVED:', EVENTS.PASSWORD_RESET_REQUESTED, data);
 
-    await sendEmailJob({
+    await sendNotificationJob({
+      channel: 'email',
       type: 'RESET_PASSWORD',
       to: data.email,
       tenantId: data.tenantId,

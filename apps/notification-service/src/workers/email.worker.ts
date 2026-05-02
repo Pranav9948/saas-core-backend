@@ -1,47 +1,61 @@
 import { Worker } from 'bullmq';
-import { emailProcessor } from '../processors/email.processor.js';
+import { emailProcessor } from '../processors/email/email.processor.js';
 import { EmailJobData } from '../types/email.types.js';
 import { logger } from '../core/logger.js';
 import { redisConfig } from '../config/redis.js';
+import { notificationRouter } from '../routers/notification.router.js';
 
 export const emailWorker = new Worker(
   'email-queue',
   async (job) => {
-    try {
-      const data = job.data as EmailJobData;
-      logger.info(`data in email worker ${JSON.stringify(job, null, 2)}`);
-      switch (job.name) {
-        case 'email:RESET_PASSWORD':
-          return await emailProcessor.resetPassword(
-            data as Extract<EmailJobData, { type: 'RESET_PASSWORD' }>,
-          );
-        case 'email:INVITE_USER':
-          return await emailProcessor.inviteUser(
-            data as Extract<EmailJobData, { type: 'INVITE_USER' }>,
-          );
-        case 'email:LOGIN_ALERT':
-          return await emailProcessor.loginAlert(
-            data as Extract<EmailJobData, { type: 'LOGIN_ALERT' }>,
-          );
-
-        default:
-          throw new Error(`Unknown job type: ${job.name}`);
-      }
-    } catch (error) {
-      logger.error(
-        {
-          jobId: job.id,
-          err: error instanceof Error ? error.message : error,
-          stack: error instanceof Error ? error.stack : undefined,
-          data: job.data,
-        },
-        '❌ Email job failed',
-      );
-      throw error;
-    }
+    return notificationRouter(job);
   },
   {
     connection: redisConfig,
-    concurrency: 5,
+    concurrency: 10,
+
+    limiter: {
+      max: 5,
+      duration: 1000,
+    },
   },
 );
+
+emailWorker.on('completed', (job) => {
+  logger.info(
+    {
+      jobId: job.id,
+      jobName: job.name,
+    },
+    'Worker completed event',
+  );
+});
+
+emailWorker.on('failed', (job, err) => {
+  if (
+    job &&
+    job.attemptsMade !== undefined &&
+    job.opts.attempts &&
+    job.attemptsMade >= job.opts.attempts
+  ) {
+    logger.error(
+      {
+        jobId: job?.id,
+        type: job?.name,
+        attempts: job?.attemptsMade,
+        error: err.message,
+      },
+      'Job permanently failed',
+    );
+  }
+
+  logger.error(
+    {
+      jobId: job?.id,
+      jobName: job?.name,
+      attempts: job?.attemptsMade,
+      error: err.message,
+    },
+    'Worker failed event',
+  );
+});

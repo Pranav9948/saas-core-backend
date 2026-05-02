@@ -6,6 +6,6 @@ export const defaultJobOptions: JobsOptions = {
     type: 'exponential',
     delay: 2000,
   },
-  removeOnComplete: true,
-  removeOnFail: false,
+  removeOnComplete: { count: 50 },
+  removeOnFail: { count: 50 },
 };

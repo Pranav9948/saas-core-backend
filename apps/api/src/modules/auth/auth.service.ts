@@ -10,7 +10,6 @@ import {
 import { ErrorCode } from '@/exceptions/root.js';
 import { Security } from '@/core/security.js';
 import { TenantRepository } from '../tenant/tenant.repository.js';
-import { emailQueue } from '../jobs/queues/email.queue.js';
 import { eventBus } from '../events/event-bus.js';
 import { EVENTS } from '../events/events.js';
 
