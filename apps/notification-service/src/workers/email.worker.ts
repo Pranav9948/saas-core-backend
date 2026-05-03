@@ -8,7 +8,38 @@ import { notificationRouter } from '../routers/notification.router.js';
 export const emailWorker = new Worker(
   'email-queue',
   async (job) => {
-    return notificationRouter(job);
+    const startTime = Date.now();
+
+    logger.info({
+      msg: 'Job started',
+      queue: 'email-queue',
+      jobId: job.id,
+      jobName: job.name,
+    });
+
+    try {
+      const result = await notificationRouter(job);
+      const duration = Date.now() - startTime;
+      logger.info({
+        msg: 'Job completed',
+        queue: 'email-queue',
+        jobId: job.id,
+        jobName: job.name,
+        duration: `${duration}ms`,
+      });
+      return result;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      logger.error({
+        msg: 'Job failed',
+        queue: 'email-queue',
+        jobId: job.id,
+        jobName: job.name,
+        duration: `${duration}ms`,
+        err: error instanceof Error ? error.message : error,
+      });
+      throw error;
+    }
   },
   {
     connection: redisConfig,
@@ -20,16 +51,6 @@ export const emailWorker = new Worker(
     },
   },
 );
-
-emailWorker.on('completed', (job) => {
-  logger.info(
-    {
-      jobId: job.id,
-      jobName: job.name,
-    },
-    'Worker completed event',
-  );
-});
 
 emailWorker.on('failed', (job, err) => {
   if (
