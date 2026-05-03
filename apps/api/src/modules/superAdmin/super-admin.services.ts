@@ -5,6 +5,7 @@ import {
 } from '@/exceptions/exceptions.js';
 import { superAdminRepo } from './super-admin.repository.js';
 import { prisma } from '@/infra/db.js';
+import { hashToken } from '@/core/security.js';
 
 class SuperAdminService {
   async createInitialSuperAdmin(data: {
@@ -61,10 +62,12 @@ class SuperAdminService {
       id: superAdmin.id,
     });
 
+    const hashedRefreshToken = await hashToken(refreshToken);
+
     // Save refresh token
     await superAdminRepo.createRefreshToken(
       superAdmin.id,
-      refreshToken,
+      hashedRefreshToken,
       new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     );
 
@@ -86,9 +89,11 @@ class SuperAdminService {
 
   async rotateRefreshToken(oldToken: string) {
     try {
+      const hashedOldToken = hashToken(oldToken);
+
       const payload = SuperAdminSecurity.verifyRefreshToken(oldToken);
 
-      const storedToken = await superAdminRepo.findRefreshToken(oldToken);
+      const storedToken = await superAdminRepo.findRefreshToken(hashedOldToken);
 
       if (!storedToken || storedToken.expiresAt < new Date()) {
         throw new UnauthorizedException('Invalid refresh token');
@@ -111,11 +116,14 @@ class SuperAdminService {
         id: superAdmin.id,
       });
 
+      const hashedNewRefreshToken = await hashToken(newRefreshToken);
+
       // Delete old refresh token and create new one
-      await superAdminRepo.deleteRefreshToken(oldToken);
+
+      await superAdminRepo.deleteRefreshToken(hashedOldToken);
       await superAdminRepo.createRefreshToken(
         superAdmin.id,
-        newRefreshToken,
+        hashedNewRefreshToken,
         new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       );
 
@@ -130,7 +138,8 @@ class SuperAdminService {
 
   async logout(refreshToken: string) {
     try {
-      await superAdminRepo.deleteRefreshToken(refreshToken);
+      const hashedOldToken = hashToken(refreshToken);
+      await superAdminRepo.deleteRefreshToken(hashedOldToken);
     } catch (error) {
       throw new UnauthorizedException('something went wrong');
     }

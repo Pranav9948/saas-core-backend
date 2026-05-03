@@ -6,22 +6,50 @@ import { logger } from '../../../core/logger.js';
 export const analyticsWorker = new Worker(
   'analytics-queue',
   async (job) => {
+    const startTime = Date.now();
+
+    logger.info({
+      msg: 'Job started',
+      queue: 'analytics-queue',
+      jobId: job.id,
+      jobName: job.name,
+    });
+
     try {
+      let result;
+
       switch (job.name) {
         case 'daily-attendance-analytics':
-          return await analyticsProcessor.process(job.data);
+          result = await analyticsProcessor.process(job.data);
+          break;
 
         default:
           throw new Error(`Unknown job: ${job.name}`);
       }
+
+      const duration = Date.now() - startTime;
+
+      logger.info({
+        msg: 'Job completed',
+        queue: 'analytics-queue',
+        jobId: job.id,
+        jobName: job.name,
+        duration: `${duration}ms`,
+      });
+
+      return result;
     } catch (error) {
-      logger.error(
-        {
-          jobId: job.id,
-          err: error instanceof Error ? error.message : error,
-        },
-        '❌ Analytics job failed',
-      );
+      const duration = Date.now() - startTime;
+
+      logger.error({
+        msg: 'Job failed',
+        queue: 'analytics-queue',
+        jobId: job.id,
+        jobName: job.name,
+        duration: `${duration}ms`,
+        err: error instanceof Error ? error.message : error,
+      });
+
       throw error;
     }
   },
@@ -32,13 +60,14 @@ export const analyticsWorker = new Worker(
 );
 
 // failure logging
+
 analyticsWorker.on('failed', (job, err) => {
-  logger.error(
-    {
-      jobId: job?.id,
-      attempts: job?.attemptsMade,
-      err: err.message,
-    },
-    '💀 Analytics job failed permanently',
-  );
+  logger.error({
+    msg: 'Job permanently failed',
+    queue: 'analytics-queue',
+    jobId: job?.id,
+    jobName: job?.name,
+    attempts: job?.attemptsMade,
+    err: err.message,
+  });
 });

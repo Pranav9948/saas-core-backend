@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 
 const SUPER_ADMIN_ACCESS_SECRET: string =
   process.env.SUPER_ADMIN_ACCESS_SECRET!;
@@ -14,6 +15,10 @@ export interface SuperAdminTokenPayload {
 
 export interface SuperAdminRefreshTokenPayload {
   id: string;
+}
+
+export function hashToken(token: string) {
+  return crypto.createHash('sha256').update(token).digest('hex');
 }
 
 export const SuperAdminSecurity = {

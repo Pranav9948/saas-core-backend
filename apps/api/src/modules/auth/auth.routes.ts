@@ -10,11 +10,19 @@ import {
   ResetPasswordSchema,
   SignupSchema,
 } from './auth.schema.js';
+import { authLimiter, loginLimiter } from '@/core/rate-limit.js';
 
 const router: ExpressRouter = Router();
 
+router.use(authLimiter);
+
 // router.post('/signup', validate(SignupSchema), authController.signup);
-router.post('/login', validate(LoginSchema), authController.login);
+router.post(
+  '/login',
+  loginLimiter,
+  validate(LoginSchema),
+  authController.login,
+);
 router.get('/me', authenticate, authController.getMe);
 router.get('/generate-new-tokens', authController.rotateRefreshToken);
 
