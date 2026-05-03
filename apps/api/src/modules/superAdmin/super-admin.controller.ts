@@ -1,4 +1,3 @@
-// controllers/super-admin-auth.controller.ts
 import { Request, Response, NextFunction } from 'express';
 import { superAdminService } from './super-admin.services.js';
 import { UnauthorizedException } from '@/exceptions/exceptions.js';
@@ -55,13 +54,13 @@ class SuperAdminAuthController {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         maxAge: 7 * 24 * 60 * 60 * 1000,
+        path: '/',
       });
 
       res.status(200).json({
         success: true,
         data: {
           accessToken,
-          refreshToken,
           superAdmin,
         },
       });
@@ -89,6 +88,7 @@ class SuperAdminAuthController {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         maxAge: 7 * 24 * 60 * 60 * 1000,
+        path: '/',
       });
 
       res.status(200).json({
@@ -114,6 +114,7 @@ class SuperAdminAuthController {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
+        path: '/',
       });
 
       res.status(200).json({

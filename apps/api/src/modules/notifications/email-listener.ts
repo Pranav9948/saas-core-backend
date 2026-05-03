@@ -8,7 +8,11 @@ import {
 
 export const registerEmailListeners = () => {
   eventBus.on(EVENTS.USER_LOGGED_IN, async (data) => {
-    console.log('📩 EVENT RECEIVED:', EVENTS.USER_LOGGED_IN, data);
+    logger.info({
+      msg: 'Notification event received',
+      event: EVENTS.USER_LOGGED_IN,
+      tenantId: data.tenantId,
+    });
 
     await sendEmailJob({
       type: 'LOGIN_ALERT',
@@ -19,7 +23,11 @@ export const registerEmailListeners = () => {
   });
 
   eventBus.on(EVENTS.PASSWORD_RESET_REQUESTED, async (data) => {
-    console.log('📩 EVENT RECEIVED:', EVENTS.PASSWORD_RESET_REQUESTED, data);
+    logger.info({
+      msg: 'Notification event received',
+      event: EVENTS.PASSWORD_RESET_REQUESTED,
+      tenantId: data.tenantId,
+    });
 
     await sendNotificationJob({
       channel: 'email',
@@ -34,7 +42,11 @@ export const registerEmailListeners = () => {
   });
 
   eventBus.on(EVENTS.USER_INVITED, async (data) => {
-    console.log('📩 EVENT RECEIVED:', EVENTS.USER_INVITED, data);
+    logger.info({
+      msg: 'Notification event received',
+      event: EVENTS.USER_INVITED,
+      tenantId: data.tenantId,
+    });
 
     await sendEmailJob({
       type: 'INVITE_USER',

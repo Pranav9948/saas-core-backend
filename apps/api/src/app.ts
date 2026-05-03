@@ -13,16 +13,18 @@ import { setupBullBoard } from './core/bull-board.js';
 import rateLimit from 'express-rate-limit';
 import { prisma } from './infra/db.js';
 import { redis } from './infra/redis.js';
+import { requestContext } from './middlewares/request-context.middleware.js';
+import { requestLogger } from './middlewares/request-logger.middleware.js';
+import helmet from 'helmet';
+import { corsMiddleware } from './core/cors.js';
+import { apiLimiter } from './core/rate-limit.js';
+import { requestTimeout } from './middlewares/timeout.middleware.js';
+import xss from 'xss-clean';
 
 export const app: Express = express();
 const bullBoard = setupBullBoard();
 
 const viewsPath = path.join(process.cwd(), 'app', 'views');
-
-const limiter = rateLimit({
-  windowMs: 60 * 1000, // 1 min
-  max: 20, // 20 requests per minute per IP
-});
 
 app.post(
   '/api/webhook',
@@ -64,9 +66,23 @@ app.get('/health', async (_req, res) => {
   });
 });
 
+app.disable('x-powered-by');
 app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+app.use(requestContext);
+app.use(requestLogger);
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  }),
+);
 app.use(cookieParser());
+app.use(corsMiddleware);
+app.use(xss());
+
+app.use(requestTimeout(5000));
+
 app.use('/admin/queues', bullBoard.getRouter());
 
 startAnalyticsCron();
@@ -83,7 +99,7 @@ app.engine(
 app.set('view engine', 'hbs');
 
 app.set('views', viewsPath);
-app.use('/api', limiter);
+app.use('/api', apiLimiter);
 
 app.use('/api/v1', routes);
 

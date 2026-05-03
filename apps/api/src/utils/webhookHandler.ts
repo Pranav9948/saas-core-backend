@@ -13,10 +13,10 @@ export const webhookHandler = async (
   res: Response,
 ): Promise<void> => {
   const sig = req.headers['stripe-signature'];
-  logger.info('📩 Incoming Stripe webhook');
+  logger.info({ msg: 'Incoming Stripe webhook' });
 
   if (!sig || typeof sig !== 'string') {
-    logger.error('❌ Missing Stripe signature');
+    logger.error({ msg: 'Missing Stripe signature' });
     res.status(400).send('Missing signature');
     return;
   }
@@ -31,10 +31,9 @@ export const webhookHandler = async (
     );
 
     logger.info({
-      msg: '✅ Webhook verified',
+      msg: 'Stripe webhook verified',
       eventId: event.id,
       type: event.type,
-      event: JSON.stringify(event, null, 2),
     });
   } catch (err: any) {
     logger.error({
@@ -55,7 +54,7 @@ export const webhookHandler = async (
     await enqueueStripeEvent(event);
 
     logger.info({
-      msg: '✅ Event processed successfully',
+      msg: 'Stripe webhook event enqueued',
       eventId: event.id,
       type: event.type,
     });

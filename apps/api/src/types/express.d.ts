@@ -7,6 +7,8 @@ declare global {
         roleId: string;
         role: string;
       };
+      requestId: string;
+      startTime: number;
     }
   }
 }

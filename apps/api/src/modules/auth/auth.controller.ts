@@ -7,8 +7,6 @@ import {
 } from '@/exceptions/exceptions.js';
 import { ErrorCode } from '@/exceptions/root.js';
 import { getTenantPrisma } from '@/infra/tenant-prisma.js';
-import { logger } from '@/core/logger.js';
-
 export const registerGym = async (
   req: Request,
   res: Response,
@@ -22,6 +20,7 @@ export const registerGym = async (
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
     });
 
     res.status(201).json({
@@ -53,6 +52,7 @@ export const login = async (
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
     });
 
     res.json({ accessToken, user: { id: user.id, email: user.email } });
@@ -79,6 +79,7 @@ export const logout = async (
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
+      path: '/',
     });
 
     res.status(200).json({ success: true, message: 'Logged out successfully' });
@@ -128,8 +129,6 @@ export const rotateRefreshToken = async (
     const oldToken = req.cookies.refreshToken;
     if (!oldToken) throw new UnauthorizedException('No refresh token');
 
-    const tenantId = authService.getTenantIdFromRefreshToken(oldToken);
-
     const { accessToken, refreshToken } =
       await authService.rotateRefreshToken(oldToken);
 
@@ -138,6 +137,7 @@ export const rotateRefreshToken = async (
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
     });
 
     res.status(200).json({

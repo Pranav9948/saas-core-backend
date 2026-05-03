@@ -8,10 +8,11 @@ import {
   UnauthorizedException,
 } from '@/exceptions/exceptions.js';
 import { ErrorCode } from '@/exceptions/root.js';
-import { Security } from '@/core/security.js';
+import { hashToken, Security } from '@/core/security.js';
 import { TenantRepository } from '../tenant/tenant.repository.js';
 import { eventBus } from '../events/event-bus.js';
 import { EVENTS } from '../events/events.js';
+import { logger } from '@/core/logger.js';
 
 export class AuthService {
   private tenantService: TenantService;
@@ -75,14 +76,21 @@ export class AuthService {
   async rotateRefreshToken(oldToken: string) {
     const payload = this.security.verifyRefreshToken(oldToken);
     const { userId, tenantId } = payload;
-    const savedToken = await this.userRepo.findRefreshToken(oldToken, tenantId);
+    const hashed = hashToken(oldToken);
+    const savedToken = await this.userRepo.findRefreshToken(hashed, tenantId);
 
     if (!savedToken) {
+      logger.error({
+        msg: 'Refresh token reuse detected',
+        userId: payload.userId,
+        tenantId,
+      });
+
       await this.userRepo.deleteAllUserRefreshTokens(payload.userId, tenantId);
       throw new UnauthorizedException('Security alert: Session compromised.');
     }
 
-    await this.userRepo.deleteRefreshToken(oldToken, tenantId);
+    await this.userRepo.deleteRefreshToken(hashed, tenantId);
 
     const user = await this.userRepo.findById(payload.userId);
     if (!user) throw new UnauthorizedException('User not found');
@@ -91,7 +99,8 @@ export class AuthService {
   }
 
   async logout(token: string, tenantId: string) {
-    await this.userRepo.deleteRefreshToken(token, tenantId);
+    const hashed = hashToken(token);
+    await this.userRepo.deleteRefreshToken(hashed, tenantId);
   }
 
   async forgotPassword(email: string) {
@@ -200,10 +209,11 @@ export class AuthService {
       userId: user.id,
       tenantId,
     });
+    const hashedToken = await hashToken(refreshToken);
 
     await this.userRepo.createRefreshToken(
       user.id,
-      refreshToken,
+      hashedToken,
       new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       tenantId,
     );

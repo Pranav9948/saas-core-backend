@@ -1,5 +1,7 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
+import { UnauthorizedException } from '@/exceptions/exceptions.js';
 
 const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET!;
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET!;
@@ -14,6 +16,10 @@ export interface AccessTokenPayload {
 export interface RefreshTokenPayload {
   userId: string;
   tenantId: string; // We include this to make rotation tenant-aware
+}
+
+export function hashToken(token: string) {
+  return crypto.createHash('sha256').update(token).digest('hex');
 }
 
 export const Security = {
@@ -41,7 +47,14 @@ export const Security = {
    * Verifies and casts the Access Token
    */
   verifyAccessToken: (token: string) => {
-    return jwt.verify(token, ACCESS_SECRET) as AccessTokenPayload;
+    try {
+      return jwt.verify(token, ACCESS_SECRET) as AccessTokenPayload;
+    } catch (err: any) {
+      if (err.name === 'TokenExpiredError') {
+        throw new UnauthorizedException('Access token expired');
+      }
+      throw new UnauthorizedException('Invalid access token');
+    }
   },
 
   /**

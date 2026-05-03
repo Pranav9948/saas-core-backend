@@ -1,4 +1,3 @@
-import { logger } from '@/core/logger.js';
 import { Security } from '@/core/security.js';
 import { UnauthorizedException } from '@/exceptions/exceptions.js';
 import { Request, Response, NextFunction } from 'express';
@@ -19,7 +18,6 @@ export const authenticate = (
     if (!decoded.tenantId) {
       throw new UnauthorizedException('Invalid token: Tenant context missing');
     }
-    logger.info(`decoded: ${JSON.stringify(decoded, null, 2)}`);
 
     req.user = decoded;
     next();

@@ -7,6 +7,7 @@ import {
 } from 'express';
 import { BillingService } from './billing.service.js';
 import { prisma } from '@/infra/db.js';
+import { logger } from '@/core/logger.js';
 
 const billingService = new BillingService();
 
@@ -27,9 +28,13 @@ export const createCheckoutSession = async (
       data: { url },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error('❌ STRIPE ERROR:', message);
-    console.log('error in createCheckoutSession ', error);
+    logger.error({
+      msg: 'Checkout session creation failed',
+      err:
+        error instanceof Error
+          ? { message: error.message, stack: error.stack }
+          : { message: String(error) },
+    });
     next(error);
   }
 };
