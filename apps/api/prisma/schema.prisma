@@ -29,6 +29,11 @@ model Tenant {
   tenantUsers      TenantUser[]
   trainers         Trainer[]
   subscriptions    Subscription[]
+  memberGoal       MemberGoal[]
+  workoutPlan      WorkoutPlan[]
+  dietLog          DietLog[]
+  workoutLog       WorkoutLog[]
+  weightLog        WeightLog[]
 
   @@map("tenants")
 }
@@ -68,36 +73,42 @@ model User {
 }
 
 model Member {
-  id                String       @id @default(uuid()) @db.Uuid
+  id                String        @id @default(uuid()) @db.Uuid
   email             String
-  firstName         String       @map("first_name")
-  lastName          String       @map("last_name")
+  firstName         String        @map("first_name")
+  lastName          String        @map("last_name")
   phone             String?
-  dateOfBirth       DateTime?    @map("date_of_birth")
-  status            MemberStatus @default(ACTIVE)
-  assignedTrainerId String?      @map("assigned_trainer_id") @db.Uuid
-  createdAt         DateTime     @default(now()) @map("created_at")
-  updatedAt         DateTime     @updatedAt @map("updated_at")
-  tenantId          String       @map("tenant_id") @db.Uuid
+  dateOfBirth       DateTime?     @map("date_of_birth")
+  status            MemberStatus  @default(ACTIVE)
+  assignedTrainerId String?       @map("assigned_trainer_id") @db.Uuid
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+  tenantId          String        @map("tenant_id") @db.Uuid
   attendances       Attendance[]
-  assignedTrainer   Trainer?     @relation(fields: [assignedTrainerId], references: [id])
-  tenant            Tenant       @relation(fields: [tenantId], references: [id])
+  assignedTrainer   Trainer?      @relation(fields: [assignedTrainerId], references: [id])
+  tenant            Tenant        @relation(fields: [tenantId], references: [id])
+  memberGoal        MemberGoal[]
+  workoutPlan       WorkoutPlan[]
+  dietLog           DietLog[]
+  workoutLog        WorkoutLog[]
+  weightLog         WeightLog[]
 
   @@unique([email, tenantId])
   @@map("members")
 }
 
 model Trainer {
-  id             String   @id @default(uuid()) @db.Uuid
+  id             String        @id @default(uuid()) @db.Uuid
   specialization String?
   bio            String?
-  userId         String   @unique @map("user_id") @db.Uuid
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-  tenantId       String   @map("tenant_id") @db.Uuid
+  userId         String        @unique @map("user_id") @db.Uuid
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  tenantId       String        @map("tenant_id") @db.Uuid
   members        Member[]
-  tenant         Tenant   @relation(fields: [tenantId], references: [id])
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutPlan    WorkoutPlan[]
+  tenant         Tenant        @relation(fields: [tenantId], references: [id])
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, tenantId])
   @@map("trainers")
@@ -287,4 +298,190 @@ enum SubscriptionStatus {
   CANCELED
   INCOMPLETE
   TRIALING
+}
+
+enum GoalType {
+  GAIN
+  LOSS
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
+model MemberGoal {
+  id       String @id @default(uuid()) @db.Uuid
+  memberId String @db.Uuid
+  tenantId String @db.Uuid
+
+  goalType      GoalType
+  currentWeight Float
+  targetWeight  Float
+  durationWeeks Int
+  height        Float
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  member Member @relation(fields: [memberId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([memberId])
+  @@index([tenantId, memberId])
+  @@map("member_goals")
+}
+
+model WorkoutPlan {
+  id        String @id @default(uuid()) @db.Uuid
+  memberId  String @db.Uuid
+  trainerId String @db.Uuid
+  tenantId  String @db.Uuid
+
+  name     String
+  goalType GoalType
+
+  version  Int
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  member  Member  @relation(fields: [memberId], references: [id])
+  trainer Trainer @relation(fields: [trainerId], references: [id])
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+
+  days WorkoutDay[]
+
+  @@index([memberId])
+  @@index([tenantId, memberId])
+  @@map("workout_plans")
+}
+
+model WorkoutDay {
+  id        String @id @default(uuid()) @db.Uuid
+  planId    String @db.Uuid
+  dayNumber Int
+
+  createdAt DateTime @default(now())
+
+  plan      WorkoutPlan       @relation(fields: [planId], references: [id])
+  exercises WorkoutExercise[]
+
+  @@unique([planId, dayNumber])
+  @@map("workout_days")
+}
+
+model WorkoutExercise {
+  id    String @id @default(uuid()) @db.Uuid
+  dayId String @db.Uuid
+
+  name String
+  sets Int
+  reps Int
+
+  createdAt DateTime @default(now())
+
+  day WorkoutDay @relation(fields: [dayId], references: [id])
+
+  @@map("workout_exercises")
+}
+
+model FoodMaster {
+  id   String @id @default(uuid()) @db.Uuid
+  name String
+  unit String
+
+  caloriesPerUnit Float
+  protein         Float?
+  carbs           Float?
+  fat             Float?
+
+  source String // API / USER
+
+  createdAt DateTime @default(now())
+
+  dietItems DietLogItem[]
+
+  @@unique([name, unit])
+  @@map("food_master")
+}
+
+model DietLog {
+  id       String   @id @default(uuid()) @db.Uuid
+  memberId String   @db.Uuid
+  tenantId String   @db.Uuid
+  date     DateTime
+
+  createdAt DateTime @default(now())
+
+  member Member @relation(fields: [memberId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  items DietLogItem[]
+
+  @@unique([memberId, date])
+  @@index([memberId, date])
+  @@index([tenantId, memberId])
+  @@map("diet_logs")
+}
+
+model DietLogItem {
+  id        String @id @default(uuid()) @db.Uuid
+  dietLogId String @db.Uuid
+  foodId    String @db.Uuid
+
+  mealType MealType
+
+  quantity      Float
+  totalCalories Float
+
+  createdAt DateTime @default(now())
+
+  dietLog DietLog    @relation(fields: [dietLogId], references: [id])
+  food    FoodMaster @relation(fields: [foodId], references: [id])
+
+  @@index([dietLogId])
+  @@map("diet_log_items")
+}
+
+model WorkoutLog {
+  id       String @id @default(uuid()) @db.Uuid
+  memberId String @db.Uuid
+  tenantId String @db.Uuid
+
+  exercise String
+  weight   Float
+  sets     Int
+  reps     Int
+
+  date      DateTime
+  createdAt DateTime @default(now())
+
+  member Member @relation(fields: [memberId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([memberId, date])
+  @@index([tenantId, memberId])
+  @@map("workout_logs")
+}
+
+model WeightLog {
+  id       String @id @default(uuid()) @db.Uuid
+  memberId String @db.Uuid
+  tenantId String @db.Uuid
+
+  weight Float
+  date   DateTime
+
+  createdAt DateTime @default(now())
+
+  member Member @relation(fields: [memberId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([memberId, date])
+  @@index([tenantId, memberId])
+  @@map("weight_logs")
 }

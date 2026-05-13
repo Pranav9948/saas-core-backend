@@ -19,7 +19,6 @@ import helmet from 'helmet';
 import { corsMiddleware } from './core/cors.js';
 import { apiLimiter } from './core/rate-limit.js';
 import { requestTimeout } from './middlewares/timeout.middleware.js';
-import xss from 'xss-clean';
 
 export const app: Express = express();
 const bullBoard = setupBullBoard();
@@ -79,7 +78,6 @@ app.use(
 );
 app.use(cookieParser());
 app.use(corsMiddleware);
-app.use(xss());
 
 app.use(requestTimeout(5000));
 

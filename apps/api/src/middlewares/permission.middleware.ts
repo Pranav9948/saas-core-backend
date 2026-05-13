@@ -5,6 +5,7 @@ import {
 } from '@/modules/rbac/permission.cache.js';
 import { ForbiddenException } from '@/exceptions/exceptions.js';
 import { prisma } from '@/infra/db.js';
+import { logger } from '@/core/logger.js';
 
 export const authorizePermissions = (...required: string[]) => {
   return async (req: Request, _res: Response, next: NextFunction) => {
@@ -15,8 +16,12 @@ export const authorizePermissions = (...required: string[]) => {
 
       const { roleId } = req.user;
 
+      logger.info(`roleId in authorizePermissions ${JSON.stringify(req.user)}`);
+
       // 🔥 1. Check cache
       let permissions = getCachedPermissions(roleId);
+
+      logger.info(`permissions check ,${permissions}`);
 
       // 🔥 2. If not cached → fetch from DB
       if (!permissions) {
@@ -38,6 +43,13 @@ export const authorizePermissions = (...required: string[]) => {
         // 🔥 store in cache
         setCachedPermissions(roleId, permissions);
       }
+
+      logger.info(
+        `permissions in authorizePermissions ${JSON.stringify(permissions)}`,
+      );
+      logger.info(
+        `required in authorizePermissions ${JSON.stringify(required)}`,
+      );
 
       // 🔥 3. Authorization check
       const hasAccess = required.every((perm) => permissions.includes(perm));
