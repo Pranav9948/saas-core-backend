@@ -18,6 +18,7 @@ export const PERMISSIONS = {
   USER_INVITE: 'user:invite',
   USER_UPDATE_ROLE: 'user:update-role',
   USER_REMOVE: 'user:remove',
+  GOAL_CREATE: 'goal:create',
 } as const;
 
 export const ALL_PERMISSIONS = Object.values(PERMISSIONS);

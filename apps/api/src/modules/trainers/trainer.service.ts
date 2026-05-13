@@ -26,7 +26,6 @@ export class TrainerService {
     },
     tenantId: string,
   ) {
-
     await this.enforceTrainerLimit(tenantId);
 
     const user = await this.userRepo.findById(data.userId);
@@ -48,7 +47,6 @@ export class TrainerService {
 
     const trainerCount = await this.trainerRepo.count(tenantId);
     const maxTrainers = (subscription?.plan?.features as any)?.maxTrainers;
-
 
     //  Check user belongs to tenant
     const tenantUser = await this.tenantUserRepo.findUserInTenant(
@@ -72,6 +70,11 @@ export class TrainerService {
         'TRAINER',
         tx,
       );
+
+      await tx.user.update({
+        where: { id: data.userId },
+        data: { role: 'TRAINER' },
+      });
 
       return await this.trainerRepo.createProfile(
         {
@@ -180,7 +183,6 @@ export class TrainerService {
       },
     };
   }
-
 
   async enforceTrainerLimit(tenantId: string) {
     const features = await this.billingRepo.getPlanFeaturesByTenant(tenantId);
