@@ -48,6 +48,7 @@ export class AuthService {
 
   async login(data: any) {
     const user = await this.userRepo.findByEmailGlobal(data.email);
+
     if (!user) throw new UnauthorizedException('Invalid email or password');
     if (!user.isActive) {
       throw new UnauthorizedException('Account disabled');
@@ -59,10 +60,13 @@ export class AuthService {
       throw new UnauthorizedException('User not associated with any gym');
     }
 
+    const tenant = await tenantRepo.findById(tenantUser?.tenantId);
+
     const isValid = await this.security.comparePassword(
       data.password,
       user.passwordHash,
     );
+
     if (!isValid) throw new UnauthorizedException('Invalid email or password');
 
     await eventBus.emit(EVENTS.USER_LOGGED_IN, {
@@ -70,12 +74,21 @@ export class AuthService {
       tenantId: tenantUser.tenantId,
     });
 
-    return this.generateAuthResponse(user, tenantUser.tenantId);
+    const authResponse = await this.generateAuthResponse(
+      user,
+      tenantUser.tenantId,
+    );
+
+    return {
+      ...authResponse,
+      tenant,
+    };
   }
 
   async rotateRefreshToken(oldToken: string) {
     const payload = this.security.verifyRefreshToken(oldToken);
     const { userId, tenantId } = payload;
+    logger.info(`payload in rotateRefreshToken   ${payload}`);
     const hashed = hashToken(oldToken);
     const savedToken = await this.userRepo.findRefreshToken(hashed, tenantId);
 

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { superAdminService } from './super-admin.services.js';
 import { UnauthorizedException } from '@/exceptions/exceptions.js';
+import { logger } from '@/core/logger.js';
 
 type PlanParams = {
   id: string;
@@ -13,6 +14,8 @@ class SuperAdminAuthController {
     next: NextFunction,
   ): Promise<void> {
     try {
+      logger.info(`req.body in createInitialSuperAdmin ${req.body}`);
+
       const { email, password, firstName, lastName } = req.body;
 
       const result = await superAdminService.createInitialSuperAdmin({
@@ -90,6 +93,8 @@ class SuperAdminAuthController {
         maxAge: 7 * 24 * 60 * 60 * 1000,
         path: '/',
       });
+
+      res.set('Cache-Control', 'no-store');
 
       res.status(200).json({
         success: true,
@@ -206,6 +211,26 @@ class SuperAdminAuthController {
         success: true,
         message: 'Plan deleted successfully',
       });
+      return;
+    } catch (error) {
+      next(error);
+      return;
+    }
+  }
+
+  async getPlanById(
+    req: Request<PlanParams>,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      const plan = await superAdminService.getPlanById(req.params.id);
+
+      res.status(200).json({
+        success: true,
+        data: plan,
+      });
+
       return;
     } catch (error) {
       next(error);

@@ -44,17 +44,24 @@ router.get(
 );
 
 router.post(
-  '/create-plan',
+  '/plan/create-plan',
   authenticateSuperAdmin,
   requireSuperAdmin,
   validate(CreatePlanSchema),
   superAdminAuthController.createPlan,
 );
 
-router.get('/get-all-plans', superAdminAuthController.getAllPlans);
+router.get('/plan/get-all-plans', superAdminAuthController.getAllPlans);
+
+router.get(
+  '/plan/:id',
+  authenticateSuperAdmin,
+  requireSuperAdmin,
+  superAdminAuthController.getPlanById,
+);
 
 router.patch(
-  '/update-plan/:id',
+  '/plan/update-plan/:id',
   authenticateSuperAdmin,
   requireSuperAdmin,
   validate(UpdatePlanSchema),
@@ -62,7 +69,7 @@ router.patch(
 );
 
 router.delete(
-  '/delete-plan/:id',
+  '/plan/delete-plan/:id',
   authenticateSuperAdmin,
   requireSuperAdmin,
   validate(PlanIdSchema),

@@ -54,8 +54,21 @@ export const CreatePlanSchema = z.object({
   }),
 });
 
-export const UpdatePlanSchema = CreatePlanSchema.partial();
+export const UpdatePlanSchema = z.object({
+  body: z
+    .object({
+      name: z.enum(['FREE', 'BASIC', 'PRO']),
+      price: z.number().min(0),
+      currency: z.string(),
+      interval: z.enum(['MONTHLY', 'YEARLY']),
+      stripePriceId: z.string().optional(),
+      features: z.record(z.string(), z.any()),
+    })
+    .partial(),
+});
 
 export const PlanIdSchema = z.object({
-  id: z.string().uuid(),
+  params: z.object({
+    id: z.string().uuid(),
+  }),
 });

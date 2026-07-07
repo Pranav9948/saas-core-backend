@@ -220,6 +220,10 @@ class SuperAdminService {
     };
   }
 
+  async getPlanById(id: string) {
+    return await superAdminRepo.getPlanById(id);
+  }
+
   async createPlan(data: any) {
     if (data.name === 'FREE' && data.stripePriceId) {
       throw new BadRequestException('FREE plan should not have Stripe price');

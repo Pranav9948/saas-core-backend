@@ -129,6 +129,12 @@ export class SuperAdminRepository {
       where: { id },
     });
   }
+
+  async getPlanById(id: string) {
+    return prisma.plan.findUnique({
+      where: { id },
+    });
+  }
 }
 
 export const superAdminRepo = new SuperAdminRepository();

@@ -7,6 +7,8 @@ import {
 } from '@/exceptions/exceptions.js';
 import { ErrorCode } from '@/exceptions/root.js';
 import { getTenantPrisma } from '@/infra/tenant-prisma.js';
+import { logger } from '@/core/logger.js';
+
 export const registerGym = async (
   req: Request,
   res: Response,
@@ -43,7 +45,7 @@ export const login = async (
   next: NextFunction,
 ) => {
   try {
-    const { user, accessToken, refreshToken } = await authService.login(
+    const { user, accessToken, refreshToken, tenant } = await authService.login(
       req.body,
     );
 
@@ -55,7 +57,18 @@ export const login = async (
       path: '/',
     });
 
-    res.json({ accessToken, user: { id: user.id, email: user.email } });
+    res.json({
+      accessToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isActive: user.isActive,
+      },
+      tenant,
+    });
   } catch (error) {
     next(error);
   }
@@ -129,6 +142,8 @@ export const rotateRefreshToken = async (
     const oldToken = req.cookies.refreshToken;
     if (!oldToken) throw new UnauthorizedException('No refresh token');
 
+    logger.info(`oldToken ${oldToken}`);
+
     const { accessToken, refreshToken } =
       await authService.rotateRefreshToken(oldToken);
 
@@ -140,11 +155,14 @@ export const rotateRefreshToken = async (
       path: '/',
     });
 
+    res.set('Cache-Control', 'no-store');
+
     res.status(200).json({
       success: true,
       data: { accessToken },
     });
   } catch (error) {
+    logger.info(`error in rotateRefreshToken ${error}`);
     next(error);
   }
 };

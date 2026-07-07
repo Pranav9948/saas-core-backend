@@ -1,25 +1,35 @@
 import cors from 'cors';
+import { env } from './env.js';
 
-const allowedOrigins = [
-  'http://localhost:3000', // dev frontend
-  'http://localhost:5173', // vite
-  'https://yourdomain.com', // production frontend
-];
+const allowedOrigins = new Set(
+  [
+    env.FRONTEND_URL,
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+  ].filter(Boolean),
+);
 
 export const corsMiddleware = cors({
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
+    // Allow non-browser clients (curl, server-to-server) and same-origin
+    if (!origin || allowedOrigins.has(origin)) {
       return callback(null, true);
     }
 
-    return callback(new Error('Not allowed by CORS'));
+    return callback(new Error(`Not allowed by CORS: ${origin}`));
   },
 
   credentials: true,
 
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'Cache-Control',
+    'Pragma',
+    'X-Requested-With',
+  ],
 });
