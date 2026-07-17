@@ -1,11 +1,13 @@
 import { SuperAdminSecurity } from '@/core/super-admin.security.js';
 import {
   BadRequestException,
+  NotFoundException,
   UnauthorizedException,
 } from '@/exceptions/exceptions.js';
 import { superAdminRepo } from './super-admin.repository.js';
 import { prisma } from '@/infra/db.js';
 import { hashToken } from '@/core/security.js';
+import { logger } from '@/core/logger.js';
 
 class SuperAdminService {
   async createInitialSuperAdmin(data: {
@@ -39,7 +41,7 @@ class SuperAdminService {
     const superAdmin = await superAdminRepo.findByEmail(email);
 
     if (!superAdmin || !superAdmin.isActive) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new NotFoundException('Invalid credentials', 3002);
     }
 
     const isValidPassword = await SuperAdminSecurity.comparePassword(
@@ -48,7 +50,7 @@ class SuperAdminService {
     );
 
     if (!isValidPassword) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new NotFoundException('Invalid credentials', 3002);
     }
 
     // Generate tokens
