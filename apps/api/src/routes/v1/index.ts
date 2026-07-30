@@ -9,6 +9,8 @@ import tenantRoutes from '../../modules/tenant/tenant.route.js';
 import superAdminRoutes from '../../modules/superAdmin/super-admin.routes.js';
 import goalRoutes from '../../modules/features/goals/goal.routes.js';
 import billingRoutes from '../../modules/billing/billing.routes.js';
+import permissionsRoutes from '../../modules/rbac/permissions.routes.js';
+import rolesRoutes from '../../modules/rbac/roles.routes.js';
 import debugRoutes from '../../scripts/debug.routes.js';
 
 const router: ExpressRouter = Router();
@@ -22,6 +24,8 @@ router.use('/attendance', attendanceRoutes);
 router.use('/tenant', tenantRoutes);
 router.use('/super-admin', superAdminRoutes);
 router.use('/billing', billingRoutes);
+router.use('/permissions', permissionsRoutes);
+router.use('/tenants/:tenantId/roles', rolesRoutes);
 router.use('/debug', debugRoutes);
 router.use('/goals', goalRoutes);
 

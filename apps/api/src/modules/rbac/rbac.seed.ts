@@ -1,14 +1,8 @@
 import { prisma } from '../../infra/db.js';
 import { ALL_PERMISSIONS } from './permissions.constants.js';
+import { seedPermissions } from './seed-permissions.js';
 
-export async function seedPermissions() {
-  await prisma.permission.createMany({
-    data: ALL_PERMISSIONS.map((name) => ({ name })),
-    skipDuplicates: true,
-  });
-
-  console.log('✅ Permissions seeded');
-}
+export { seedPermissions } from './seed-permissions.js';
 
 /**
  *  Create roles per tenant
@@ -40,7 +34,9 @@ export async function createRolesForTenant(tenantId: string) {
 const ROLE_PERMISSIONS = {
   OWNER: ALL_PERMISSIONS,
 
-  ADMIN: ALL_PERMISSIONS.filter((p) => p !== 'user:update-role'),
+  ADMIN: ALL_PERMISSIONS.filter(
+    (p) => p !== 'user:update-role' && !p.startsWith('role:'),
+  ),
 
   STAFF: [
     'member:create',
@@ -96,4 +92,12 @@ async function run() {
   console.log('✅ Done');
 }
 
-run().catch(console.error);
+const isDirectRun = process.argv[1]?.includes('rbac.seed');
+
+if (isDirectRun) {
+  run()
+    .catch(console.error)
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}

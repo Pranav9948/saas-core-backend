@@ -2,6 +2,9 @@ import { app } from './app.js';
 import { config } from '@/core/config.js';
 import { logger } from '@/core/logger.js';
 import { connectDB, disConnectDB } from '@/infra/db.js';
+import { seedPermissions } from '@/modules/rbac/seed-permissions.js';
+import { seedRolesForAllTenants } from '@/modules/rbac/rbac.seed.js';
+import { syncOwnerRolePermissions } from '@/modules/rbac/sync-owner-permissions.js';
 import { redis } from '@/infra/redis.js';
 import { registerEvents } from '@/modules/events/register.js';
 import { registerGracefulShutdown } from '@saas/core';
@@ -21,6 +24,9 @@ process.on('uncaughtException', (error) => {
 const start = async () => {
   try {
     await connectDB();
+    await seedPermissions();
+    await seedRolesForAllTenants();
+    await syncOwnerRolePermissions();
     registerEvents();
     logger.info(
       { service: 'api', env: config.NODE_ENV },

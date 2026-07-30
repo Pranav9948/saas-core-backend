@@ -129,7 +129,7 @@ export class TenantService {
     await this.tenantRepo.sendInviteEmail(
       data.email,
       inviteLink,
-      data.firstname,
+      data.firstName,
       tenantDetails?.name ?? 'gym sass team',
       data.role,
       tenantId,

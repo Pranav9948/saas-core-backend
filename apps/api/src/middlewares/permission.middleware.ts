@@ -3,6 +3,7 @@ import {
   getCachedPermissions,
   setCachedPermissions,
 } from '@/modules/rbac/permission.cache.js';
+import { resolveRoleIdForUser } from '@/modules/rbac/resolve-role-id.js';
 import { ForbiddenException } from '@/exceptions/exceptions.js';
 import { prisma } from '@/infra/db.js';
 import { logger } from '@/core/logger.js';
@@ -14,16 +15,17 @@ export const authorizePermissions = (...required: string[]) => {
         throw new ForbiddenException('Unauthenticated');
       }
 
-      const { roleId } = req.user;
+      const roleId = await resolveRoleIdForUser({
+        userId: req.user.userId,
+        tenantId: req.user.tenantId,
+        role: req.user.role,
+        roleId: req.user.roleId,
+      });
 
-      logger.info(`roleId in authorizePermissions ${JSON.stringify(req.user)}`);
+      req.user.roleId = roleId;
 
-      // 🔥 1. Check cache
       let permissions = getCachedPermissions(roleId);
 
-      logger.info(`permissions check ,${permissions}`);
-
-      // 🔥 2. If not cached → fetch from DB
       if (!permissions) {
         const role = await prisma.role.findUnique({
           where: { id: roleId },
@@ -39,20 +41,10 @@ export const authorizePermissions = (...required: string[]) => {
         }
 
         permissions = role.permissions.map((rp) => rp.permission.name);
-
-        // 🔥 store in cache
         setCachedPermissions(roleId, permissions);
       }
 
-      logger.info(
-        `permissions in authorizePermissions ${JSON.stringify(permissions)}`,
-      );
-      logger.info(
-        `required in authorizePermissions ${JSON.stringify(required)}`,
-      );
-
-      // 🔥 3. Authorization check
-      const hasAccess = required.every((perm) => permissions.includes(perm));
+      const hasAccess = required.every((perm) => permissions!.includes(perm));
 
       if (!hasAccess) {
         throw new ForbiddenException(

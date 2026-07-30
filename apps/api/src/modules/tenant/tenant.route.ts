@@ -5,6 +5,7 @@ import { validate } from '@/middlewares/validate.middleware.js';
 import {
   AcceptInviteSchema,
   InviteUserSchema,
+  directCreateUserSchema,
   UpdateTenantSchema,
   upgradePlanSchema,
 } from './tenant.schema.js';
@@ -57,7 +58,7 @@ router.post(
   '/users',
   authenticate,
   authorizePermissions(PERMISSIONS.TENANT_UPDATE),
-  validate(InviteUserSchema),
+  validate(directCreateUserSchema),
   tenantController.createUserDirect,
 );
 

@@ -32,6 +32,7 @@ export class TenantRepository {
       const ownerRole = await tx.role.findFirst({
         where: {
           name: 'OWNER',
+          tenantId: tenant.id,
         },
       });
 
@@ -40,7 +41,7 @@ export class TenantRepository {
           userId: user.id,
           tenantId: tenant.id,
           role: 'OWNER',
-          roleId: ownerRole?.id,
+          roleId: ownerRole?.id ?? null,
         },
       });
 
