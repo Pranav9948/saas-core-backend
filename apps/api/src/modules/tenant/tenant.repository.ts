@@ -91,8 +91,11 @@ export class TenantRepository {
         logoUrl: true,
         contactEmail: true,
         contactPhone: true,
+        address: true,
         city: true,
+        state: true,
         country: true,
+        timezone: true,
         createdAt: true,
         updatedAt: true,
 
@@ -150,7 +153,10 @@ export class TenantRepository {
         contactPhone: true,
         address: true,
         city: true,
+        state: true,
         country: true,
+        timezone: true,
+        logoUrl: true,
         updatedAt: true,
       },
     });
@@ -176,6 +182,79 @@ export class TenantRepository {
     if (!user) return false;
 
     return user.tenants.some((t) => t.tenantId === tenantId);
+  }
+
+  async resolveRoleId(tenantId: string, roleName: string) {
+    const roleRecord = await prisma.role.findFirst({
+      where: {
+        name: roleName,
+        tenantId,
+      },
+    });
+
+    if (!roleRecord) {
+      throw new InternalException(
+        `Role '${roleName}' not found for this tenant`,
+        ErrorCode.INTERNAL_EXCEPTION,
+      );
+    }
+
+    return roleRecord.id;
+  }
+
+  async listTenantUsers(tenantId: string) {
+    return prisma.tenantUser.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        role: true,
+        createdAt: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            isActive: true,
+          },
+        },
+      },
+    });
+  }
+
+  async listPendingInvites(tenantId: string) {
+    return prisma.inviteToken.findMany({
+      where: {
+        tenantId,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        expiresAt: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  async deletePendingInvitesForEmail(email: string, tenantId: string) {
+    return prisma.inviteToken.deleteMany({
+      where: {
+        email: email.toLowerCase(),
+        tenantId,
+      },
+    });
+  }
+
+  async findInviteById(id: string, tenantId: string) {
+    return prisma.inviteToken.findFirst({
+      where: { id, tenantId },
+    });
   }
 
   async createInviteToken(data: any) {
@@ -209,6 +288,7 @@ export class TenantRepository {
       const roleRecord = await tx.role.findFirst({
         where: {
           name: role,
+          tenantId,
         },
       });
 
@@ -267,9 +347,20 @@ export class TenantRepository {
     });
   }
 
-  async addUserToTenant(data: any) {
+  async addUserToTenant(data: {
+    userId: string;
+    tenantId: string;
+    role: string;
+  }) {
+    const roleId = await this.resolveRoleId(data.tenantId, data.role);
+
     return prisma.tenantUser.create({
-      data,
+      data: {
+        userId: data.userId,
+        tenantId: data.tenantId,
+        role: data.role,
+        roleId,
+      },
     });
   }
 

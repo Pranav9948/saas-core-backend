@@ -13,13 +13,22 @@ const passwordSchema = z
   });
 
 export const UpdateTenantSchema = z.object({
-  name: z.string().min(2).optional(),
-  contactPhone: z.string().optional(),
-  contactEmail: z.string().email().optional(),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  country: z.string().optional(),
-  isActive: z.boolean().optional(),
+  body: z.object({
+    name: z.string().min(2).max(100).optional(),
+    contactPhone: z
+      .string()
+      .min(8)
+      .max(20)
+      .regex(/^[0-9+\-() ]+$/, 'Phone number contains invalid characters')
+      .optional(),
+    contactEmail: z.string().email().optional(),
+    address: z.string().min(5).max(255).optional(),
+    city: z.string().min(2).max(100).optional(),
+    state: z.string().min(2).max(100).optional(),
+    country: z.string().min(2).max(100).optional(),
+    timezone: z.string().min(2).max(100).optional(),
+    isActive: z.boolean().optional(),
+  }),
 });
 
 export const InviteUserSchema = z.object({
@@ -45,6 +54,18 @@ export const AcceptInviteSchema = z.object({
   body: z.object({
     token: z.string().min(10),
     password: passwordSchema,
+  }),
+});
+
+export const InvitePreviewQuerySchema = z.object({
+  query: z.object({
+    token: z.string().min(10),
+  }),
+});
+
+export const InviteIdParamSchema = z.object({
+  params: z.object({
+    id: z.string().uuid(),
   }),
 });
 

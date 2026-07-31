@@ -7,6 +7,7 @@ import {
 import { ErrorCode } from '@/exceptions/root.js';
 import { TenantRepository } from '@/modules/tenant/tenant.repository.js';
 import { logger } from '@/core/logger.js';
+import { authService } from '../auth/auth.service.js';
 
 const tenantRepo = new TenantRepository();
 const tenantService = new TenantService(tenantRepo);
@@ -106,6 +107,84 @@ export const inviteUser = async (
   }
 };
 
+export const listTeamMembers = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const tenantId = req.user!.tenantId;
+    const members = await tenantService.listTeamMembers(tenantId);
+
+    res.status(200).json({
+      success: true,
+      data: members,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const listPendingInvites = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const tenantId = req.user!.tenantId;
+    const invites = await tenantService.listPendingInvites(tenantId);
+
+    res.status(200).json({
+      success: true,
+      data: invites,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const cancelInvite = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const tenantId = req.user!.tenantId;
+    const result = await tenantService.cancelInvite(tenantId, req.params.id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Invite cancelled',
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getInvitePreview = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const token = req.query.token;
+
+    if (typeof token !== 'string' || token.length < 10) {
+      throw new BadRequestException('Invalid invite token');
+    }
+
+    const preview = await tenantService.getInvitePreview(token);
+
+    res.status(200).json({
+      success: true,
+      data: preview,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const createUserDirect = async (
   req: Request,
   res: Response,
@@ -138,11 +217,27 @@ export const acceptInvite = async (
 ) => {
   try {
     const result = await tenantService.acceptInvite(req.body);
+    const session = await authService.createSessionForUser(
+      result.userId,
+      result.tenantId,
+    );
+
+    res.cookie('refreshToken', session.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
 
     res.status(200).json({
       success: true,
       message: 'Account created successfully',
-      data: result,
+      data: {
+        accessToken: session.accessToken,
+        user: session.user,
+        tenantId: session.tenantId,
+      },
     });
   } catch (err) {
     next(err);

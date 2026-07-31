@@ -179,10 +179,12 @@ export class AuthService {
         name: data.gymName,
         slug,
         contactPhone: data.contactPhone,
-        contactEmail: data.email,
+        contactEmail: data.contactEmail ?? data.email,
         address: data.address,
         city: data.city,
+        state: data.state,
         country: data.country,
+        timezone: data.timezone ?? 'UTC',
       },
       user: {
         email: data.email,
@@ -248,6 +250,35 @@ export class AuthService {
     );
 
     return { user, accessToken, refreshToken };
+  }
+
+  async createSessionForUser(userId: string, tenantId: string) {
+    const user = await this.userRepo.findById(userId);
+
+    if (!user) {
+      throw new NotFoundException('User not found', ErrorCode.NOT_FOUND);
+    }
+
+    const tenantUser = await this.tenantRepo.findTenantUser(userId, tenantId);
+
+    if (!tenantUser) {
+      throw new UnauthorizedException('User not linked to tenant');
+    }
+
+    const authResponse = await this.generateAuthResponse(user, tenantId);
+
+    return {
+      ...authResponse,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: tenantUser.role,
+        isActive: user.isActive,
+      },
+      tenantId,
+    };
   }
 }
 
