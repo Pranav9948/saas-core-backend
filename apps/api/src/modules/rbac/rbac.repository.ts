@@ -102,5 +102,6 @@ export class RbacRepository {
     return prisma.role.delete({
       where: { id: roleId, tenantId },
     });
+    ``;
   }
 }
