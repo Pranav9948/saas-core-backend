@@ -41,13 +41,28 @@ export const InviteUserSchema = z.object({
 });
 
 export const directCreateUserSchema = z.object({
-  body: z.object({
-    email: z.string().email(),
-    firstName: z.string().min(2),
-    lastName: z.string().min(1),
-    role: z.enum(['ADMIN', 'STAFF']),
-    password: passwordSchema,
-  }),
+  body: z
+    .object({
+      email: z.string().email(),
+      firstName: z.string().min(2),
+      lastName: z.string().min(1),
+      role: z.enum(['ADMIN', 'STAFF', 'TRAINER']),
+      password: passwordSchema,
+      specialization: z.string().min(3).max(200).optional(),
+      bio: z.string().max(500).optional(),
+    })
+    .superRefine((data, ctx) => {
+      if (
+        data.role === 'TRAINER' &&
+        (!data.specialization || data.specialization.trim().length < 3)
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['specialization'],
+          message: 'Specialization is required for trainers (min 3 characters)',
+        });
+      }
+    }),
 });
 
 export const AcceptInviteSchema = z.object({

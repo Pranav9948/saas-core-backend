@@ -311,6 +311,66 @@ export class TenantRepository {
     });
   }
 
+  async createTrainerWithTenant({
+    tenantId,
+    user,
+    specialization,
+    bio,
+  }: {
+    tenantId: string;
+    user: {
+      email: string;
+      passwordHash: string;
+      firstName: string;
+      lastName: string;
+    };
+    specialization: string;
+    bio?: string | null;
+  }) {
+    return prisma.$transaction(async (tx) => {
+      const roleRecord = await tx.role.findFirst({
+        where: {
+          name: 'TRAINER',
+          tenantId,
+        },
+      });
+
+      if (!roleRecord) {
+        throw new InternalException(
+          "Role 'TRAINER' not found for this tenant",
+          ErrorCode.INTERNAL_EXCEPTION,
+        );
+      }
+
+      const createdUser = await tx.user.create({
+        data: {
+          ...user,
+          role: 'TRAINER',
+        },
+      });
+
+      await tx.tenantUser.create({
+        data: {
+          userId: createdUser.id,
+          tenantId,
+          role: 'TRAINER',
+          roleId: roleRecord.id,
+        },
+      });
+
+      const trainer = await tx.trainer.create({
+        data: {
+          userId: createdUser.id,
+          tenantId,
+          specialization,
+          bio: bio ?? null,
+        },
+      });
+
+      return { user: createdUser, trainer };
+    });
+  }
+
   async sendInviteEmail(
     email: string,
     link: string,

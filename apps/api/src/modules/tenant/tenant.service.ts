@@ -13,6 +13,7 @@ import bcrypt from 'bcrypt';
 import { MemberRepository } from '../members/member.repository.js';
 import { prisma } from '@/infra/db.js';
 import { TrainerRepository } from '../trainers/trainer.repository.js';
+import { TrainerService } from '../trainers/trainer.service.js';
 import { logger } from '@/core/logger.js';
 
 const slugify = slugifyPkg.default;
@@ -22,6 +23,7 @@ export class TenantService {
     private tenantRepo: TenantRepository,
     private memberRepo = new MemberRepository(),
     private trainerRepo = new TrainerRepository(),
+    private trainerService = new TrainerService(),
   ) {}
 
   validateRole(inviterRole: string, targetRole: string) {
@@ -203,6 +205,33 @@ export class TenantService {
     }
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
+
+    if (data.role === 'TRAINER') {
+      await this.trainerService.enforceTrainerLimit(tenantId);
+
+      const result = await this.tenantRepo.createTrainerWithTenant({
+        tenantId,
+        user: {
+          email,
+          passwordHash: hashedPassword,
+          firstName: data.firstName.trim(),
+          lastName: data.lastName.trim(),
+        },
+        specialization: data.specialization.trim(),
+        bio: data.bio?.trim() || null,
+      });
+
+      return {
+        id: result.user.id,
+        email: result.user.email,
+        firstName: result.user.firstName,
+        lastName: result.user.lastName,
+        role: 'TRAINER',
+        isActive: result.user.isActive,
+        trainerId: result.trainer.id,
+        specialization: result.trainer.specialization,
+      };
+    }
 
     const user = await this.tenantRepo.createUserWithTenant({
       tenantId,
