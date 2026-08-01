@@ -43,6 +43,8 @@ services:
     environment:
       CHOKIDAR_USEPOLLING: true
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-2026}@postgres:5432/dev_saas_backend?schema=public&connection_limit=30
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
 
     volumes:
       - ./apps:/app/apps
@@ -52,6 +54,8 @@ services:
 
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   redis:
@@ -79,10 +83,15 @@ services:
     container_name: saas_notification_service
     restart: always
     env_file:
-      - ./apps/notification-service/.env.development
+      - ./apps/notification-service/.env.docker
     environment:
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      MAIL_HOST: mailhog
+      MAIL_PORT: 1025
+      MAIL_USER: ''
+      MAIL_PASS: ''
+      MAIL_FROM: noreply@gymflow.local
     ports:
       - '4001:4001'
     volumes:

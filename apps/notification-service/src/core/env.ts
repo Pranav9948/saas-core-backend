@@ -18,6 +18,7 @@ const envSchema = z.object({
   // Optional in local docker when using MailHog (no auth).
   MAIL_USER: z.string().optional().default(''),
   MAIL_PASS: z.string().optional().default(''),
+  MAIL_FROM: z.string().min(3).optional().default('noreply@gymflow.local'),
 
   HEALTH_PORT: z.coerce.number().int().positive().default(4001),
 }).superRefine((val, ctx) => {

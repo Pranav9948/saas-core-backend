@@ -1,33 +1,51 @@
 import nodemailer from 'nodemailer';
 import { logger } from '../core/logger.js';
+import { config } from '../core/config.js';
 
-const mailHost = process.env.MAIL_HOST;
-const mailPort = Number(process.env.MAIL_PORT);
 const useAuth =
-  Boolean(process.env.MAIL_USER) &&
-  Boolean(process.env.MAIL_PASS) &&
-  mailHost !== 'mailhog';
+  Boolean(config.MAIL_USER) &&
+  Boolean(config.MAIL_PASS) &&
+  config.MAIL_HOST !== 'mailhog';
 
 const transporter = nodemailer.createTransport({
-  host: mailHost,
-  port: mailPort,
-  secure: String(process.env.MAIL_PORT) === '465',
+  host: config.MAIL_HOST,
+  port: config.MAIL_PORT,
+  secure: String(config.MAIL_PORT) === '465',
   ...(useAuth
     ? {
         auth: {
-          user: process.env.MAIL_USER,
-          pass: process.env.MAIL_PASS,
+          user: config.MAIL_USER,
+          pass: config.MAIL_PASS,
         },
       }
     : {}),
 });
 
+const mailFrom =
+  config.MAIL_FROM || config.MAIL_USER || 'noreply@gymflow.local';
+
 export const sendEmail = async (to: string, subject: string, html: string) => {
-  logger.info(`sendEmail sendEmail ${to},${subject},${html}`);
+  logger.info(
+    {
+      to,
+      subject,
+      mailHost: config.MAIL_HOST,
+      mailPort: config.MAIL_PORT,
+    },
+    'Sending email',
+  );
+
   await transporter.sendMail({
-    from: `"Support Team" <${process.env.MAIL_USER}>`,
+    from: `"GymFlow" <${mailFrom}>`,
     to,
     subject,
     html,
   });
+
+  if (config.MAIL_HOST === 'mailhog') {
+    logger.info(
+      { mailhogUi: 'http://localhost:8025' },
+      'Email captured by MailHog — open the UI to view it',
+    );
+  }
 };
