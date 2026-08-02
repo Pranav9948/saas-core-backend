@@ -5,6 +5,8 @@ import { BillingPlansService } from './billing-plans.service.js';
 import { BillingSubscriptionService } from './billing-subscription.service.js';
 import { BillingSummaryService } from './billing-summary.service.js';
 import { BillingCustomerPortalService } from './billing-customer-portal.service.js';
+import { BillingPaymentHistoryService } from './billing-payment-history.service.js';
+import { DEFAULT_PAYMENT_HISTORY_LIMIT } from './billing.constants.js';
 import type Stripe from 'stripe';
 
 export class BillingService {
@@ -14,6 +16,7 @@ export class BillingService {
   private readonly subscriptionService: BillingSubscriptionService;
   private readonly summaryService: BillingSummaryService;
   private readonly customerPortalService: BillingCustomerPortalService;
+  private readonly paymentHistoryService: BillingPaymentHistoryService;
 
   constructor(billingRepo = new BillingRepository()) {
     this.checkoutService = new BillingCheckoutService(billingRepo);
@@ -22,6 +25,7 @@ export class BillingService {
     this.subscriptionService = new BillingSubscriptionService(billingRepo);
     this.summaryService = new BillingSummaryService(billingRepo);
     this.customerPortalService = new BillingCustomerPortalService(billingRepo);
+    this.paymentHistoryService = new BillingPaymentHistoryService(billingRepo);
   }
 
   async createCheckoutSession(
@@ -50,5 +54,15 @@ export class BillingService {
 
   async createCustomerPortalSession(tenantId: string) {
     return this.customerPortalService.createPortalSession(tenantId);
+  }
+
+  async getPaymentHistory(
+    tenantId: string,
+    query: { limit?: number; startingAfter?: string },
+  ) {
+    return this.paymentHistoryService.getPaymentHistoryForTenant(tenantId, {
+      limit: query.limit ?? DEFAULT_PAYMENT_HISTORY_LIMIT,
+      startingAfter: query.startingAfter,
+    });
   }
 }

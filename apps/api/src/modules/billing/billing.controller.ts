@@ -130,6 +130,34 @@ export const createCustomerPortalSession = async (
   }
 };
 
+export const getPaymentHistory = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const tenantId = req.user!.tenantId;
+    const limit =
+      req.query.limit !== undefined ? Number(req.query.limit) : undefined;
+    const startingAfter =
+      typeof req.query.starting_after === 'string'
+        ? req.query.starting_after
+        : undefined;
+
+    const data = await billingService.getPaymentHistory(tenantId, {
+      limit,
+      startingAfter,
+    });
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getPlansPreview = async (
   req: Request,
   res: Response,

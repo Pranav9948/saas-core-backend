@@ -8,7 +8,7 @@ import {
 import * as billingController from './billing.controller.js';
 import { authenticate } from '@/middlewares/auth.middleware.js';
 import { validate } from '@/middlewares/validate.middleware.js';
-import { CreateCheckoutSessionSchema } from './billing.schema.js';
+import { CreateCheckoutSessionSchema, PaymentHistoryQuerySchema } from './billing.schema.js';
 
 const router: ExpressRouter = Router();
 
@@ -34,6 +34,13 @@ router.get(
 );
 
 router.get('/summary', authenticate, billingController.getBillingSummary);
+
+router.get(
+  '/payment-history',
+  authenticate,
+  validate(PaymentHistoryQuerySchema),
+  billingController.getPaymentHistory,
+);
 
 router.get('/plans/preview', billingController.getPlansPreview);
 
