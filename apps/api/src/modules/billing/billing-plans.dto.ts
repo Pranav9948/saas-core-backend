@@ -71,3 +71,23 @@ export interface BillingSubscriptionResponseDto {
   cancelAtPeriodEnd: boolean;
   isPaid: boolean;
 }
+
+export type BillingSubscriptionHealth =
+  | 'HEALTHY'
+  | 'TRIAL'
+  | 'PAYMENT_REQUIRED'
+  | 'CANCELED'
+  | 'ACTION_REQUIRED';
+
+export interface BillingSummaryResponseDto {
+  plan: BillingSubscriptionPlanDto;
+  status: SubscriptionStatus;
+  health: BillingSubscriptionHealth;
+  billingInterval: BillingInterval;
+  isPaid: boolean;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  nextRenewal: string | null;
+  daysRemaining: number;
+  cancelAtPeriodEnd: boolean;
+}

@@ -19,9 +19,21 @@ router.post(
   billingController.createCheckoutSession,
 );
 
+router.post(
+  '/customer-portal',
+  authenticate,
+  billingController.createCustomerPortalSession,
+);
+
 router.get('/plans', authenticate, billingController.getBillingPlans);
 
-router.get('/subscription', authenticate, billingController.getBillingSubscription);
+router.get(
+  '/subscription',
+  authenticate,
+  billingController.getBillingSubscription,
+);
+
+router.get('/summary', authenticate, billingController.getBillingSummary);
 
 router.get('/plans/preview', billingController.getPlansPreview);
 

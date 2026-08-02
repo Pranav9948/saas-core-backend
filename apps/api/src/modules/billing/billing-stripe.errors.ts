@@ -66,3 +66,64 @@ export function rethrowStripeCheckoutError(
 
   throw error;
 }
+
+export function rethrowStripePortalError(
+  error: unknown,
+  context: { tenantId: string; operation: string },
+): never {
+  if (error instanceof Stripe.errors.StripeConnectionError) {
+    logger.error({
+      msg: 'Stripe connection error during customer portal',
+      tenantId: context.tenantId,
+      operation: context.operation,
+    });
+    throw new BadGatewayException(
+      'Billing service temporarily unavailable. Please try again.',
+      ErrorCode.SERVICE_UNAVAILABLE,
+    );
+  }
+
+  if (error instanceof Stripe.errors.StripeRateLimitError) {
+    logger.warn({
+      msg: 'Stripe rate limit during customer portal',
+      tenantId: context.tenantId,
+      operation: context.operation,
+    });
+    throw new BadGatewayException(
+      'Billing service is busy. Please try again shortly.',
+      ErrorCode.SERVICE_UNAVAILABLE,
+    );
+  }
+
+  if (
+    error instanceof Stripe.errors.StripeAPIError &&
+    typeof error.statusCode === 'number' &&
+    error.statusCode >= 500
+  ) {
+    logger.error({
+      msg: 'Stripe API error during customer portal',
+      tenantId: context.tenantId,
+      operation: context.operation,
+      statusCode: error.statusCode,
+    });
+    throw new BadGatewayException(
+      'Billing service temporarily unavailable. Please try again.',
+      ErrorCode.SERVICE_UNAVAILABLE,
+    );
+  }
+
+  if (error instanceof Stripe.errors.StripeError) {
+    logger.error({
+      msg: 'Stripe error during customer portal',
+      tenantId: context.tenantId,
+      operation: context.operation,
+      type: error.type,
+    });
+    throw new BadGatewayException(
+      'Unable to open billing portal. Please try again.',
+      ErrorCode.SERVICE_UNAVAILABLE,
+    );
+  }
+
+  throw error;
+}

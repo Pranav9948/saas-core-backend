@@ -84,6 +84,52 @@ export const getBillingSubscription = async (
   }
 };
 
+export const getBillingSummary = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const tenantId = req.user!.tenantId;
+    const data = await billingService.getBillingSummary(tenantId);
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createCustomerPortalSession = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const tenantId = req.user!.tenantId;
+    const url = await billingService.createCustomerPortalSession(tenantId);
+
+    res.status(200).json({
+      success: true,
+      data: { url },
+    });
+  } catch (error) {
+    if (!(error instanceof HttpException)) {
+      logger.error({
+        msg: 'Customer portal session creation failed',
+        tenantId: req.user?.tenantId,
+        err:
+          error instanceof Error
+            ? { message: error.message, name: error.name }
+            : { message: String(error) },
+      });
+    }
+    next(error);
+  }
+};
+
 export const getPlansPreview = async (
   req: Request,
   res: Response,

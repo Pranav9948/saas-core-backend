@@ -81,6 +81,16 @@ export class BillingRepository {
     };
   }
 
+  async getTenantPortalContext(tenantId: string) {
+    return prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        id: true,
+        stripeCustomerId: true,
+      },
+    });
+  }
+
   async updateStripeCustomerId(tenantId: string, stripeCustomerId: string) {
     return prisma.tenant.update({
       where: { id: tenantId },
