@@ -99,26 +99,25 @@ export class TenantRepository {
         createdAt: true,
         updatedAt: true,
 
-         subscriptions: {
-         select: {
-          status: true,
-          currentPeriodStart: true,
-          currentPeriodEnd: true,
-          cancelAtPeriodEnd: true,
+        subscriptions: {
+          select: {
+            status: true,
+            currentPeriodStart: true,
+            currentPeriodEnd: true,
+            cancelAtPeriodEnd: true,
 
-          plan: {
-            select: {
-              id: true,
-              name: true,
-              interval: true,
-              price: true,
-              features: true,
+            plan: {
+              select: {
+                id: true,
+                name: true,
+                interval: true,
+                price: true,
+                features: true,
+              },
             },
           },
         },
       },
-    }
-
     });
   }
 

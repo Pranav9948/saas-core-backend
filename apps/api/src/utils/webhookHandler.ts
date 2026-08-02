@@ -1,22 +1,18 @@
 import { stripe } from '@/modules/billing/stripe.service.js';
 import { Request, Response } from 'express';
 import Stripe from 'stripe';
-import { prisma } from '@/infra/db.js';
-import { BillingService } from '@/modules/billing/billing.service.js';
+import { config } from '@/core/config.js';
 import { logger } from '@/core/logger.js';
 import { enqueueStripeEvent } from '@/modules/jobs/producers/stripe.producer.js';
-
-const billingService = new BillingService();
 
 export const webhookHandler = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
   const sig = req.headers['stripe-signature'];
-  logger.info({ msg: 'Incoming Stripe webhook' });
 
   if (!sig || typeof sig !== 'string') {
-    logger.error({ msg: 'Missing Stripe signature' });
+    logger.error({ msg: 'Stripe webhook rejected — missing signature' });
     res.status(400).send('Missing signature');
     return;
   }
@@ -27,48 +23,40 @@ export const webhookHandler = async (
     event = stripe.webhooks.constructEvent(
       req.body,
       sig,
-      process.env.STRIPE_WEBHOOK_SECRET!,
+      config.STRIPE_WEBHOOK_SECRET,
     );
 
     logger.info({
       msg: 'Stripe webhook verified',
       eventId: event.id,
-      type: event.type,
+      eventType: event.type,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error({
-      msg: '❌ Signature verification failed',
-      error: err.message,
+      msg: 'Stripe webhook signature verification failed',
+      err: err instanceof Error ? err.message : String(err),
     });
-    res.status(400).send(`Webhook Error: ${err.message}`);
+    res.status(400).send('Webhook signature verification failed');
     return;
   }
 
   try {
-    logger.debug({
-      msg: '📦 Event payload snapshot',
-      type: event.type,
-      object: event.data.object?.object,
-    });
-
     await enqueueStripeEvent(event);
 
     logger.info({
-      msg: 'Stripe webhook event enqueued',
+      msg: 'Stripe webhook enqueued',
       eventId: event.id,
-      type: event.type,
+      eventType: event.type,
     });
 
     res.status(200).json({ received: true });
-    return;
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error({
-      msg: '❌ Error handling event',
+      msg: 'Stripe webhook enqueue failed',
       eventId: event.id,
-      type: event.type,
-      error: err.message,
+      eventType: event.type,
+      err: err instanceof Error ? err.message : String(err),
     });
     res.status(500).send('Webhook handler failed');
-    return;
   }
 };

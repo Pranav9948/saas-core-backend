@@ -15,10 +15,13 @@ const router: ExpressRouter = Router();
 router.post(
   '/checkout-session',
   authenticate,
+  validate(CreateCheckoutSessionSchema),
   billingController.createCheckoutSession,
 );
 
-router.get('/plans', billingController.getAllPlans);
+router.get('/plans', authenticate, billingController.getBillingPlans);
+
+router.get('/plans/preview', billingController.getPlansPreview);
 
 router.get('/success', (_req: Request, res: Response) => {
   res.render('billing/success');

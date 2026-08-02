@@ -28,8 +28,7 @@ export class MemberService {
     },
     tenantId: string,
   ) {
-
-    await this.enforceMemberLimit(tenantId)
+    await this.enforceMemberLimit(tenantId);
 
     const existing = await this.memberRepo.findByEmail(data.email, tenantId);
 
@@ -184,7 +183,7 @@ export class MemberService {
   async enforceMemberLimit(tenantId: string) {
     const features = await this.billingRepo.getPlanFeaturesByTenant(tenantId);
 
-    if (!features.maxMembers) return; 
+    if (!features.maxMembers) return;
 
     const count = await prisma.member.count({
       where: { tenantId },
@@ -197,7 +196,7 @@ export class MemberService {
     }
   }
 
-   async enforceFeature(tenantId: string, feature: string) {
+  async enforceFeature(tenantId: string, feature: string) {
     const features = await this.billingRepo.getPlanFeaturesByTenant(tenantId);
 
     if (!features[feature]) {
