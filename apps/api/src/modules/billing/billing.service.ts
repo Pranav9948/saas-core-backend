@@ -2,17 +2,20 @@ import { BillingRepository } from './billing.repository.js';
 import { BillingCheckoutService } from './billing-checkout.service.js';
 import { BillingWebhookService } from './billing-webhook.service.js';
 import { BillingPlansService } from './billing-plans.service.js';
+import { BillingSubscriptionService } from './billing-subscription.service.js';
 import type Stripe from 'stripe';
 
 export class BillingService {
   private readonly checkoutService: BillingCheckoutService;
   private readonly webhookService: BillingWebhookService;
   private readonly plansService: BillingPlansService;
+  private readonly subscriptionService: BillingSubscriptionService;
 
   constructor(billingRepo = new BillingRepository()) {
     this.checkoutService = new BillingCheckoutService(billingRepo);
     this.webhookService = new BillingWebhookService(billingRepo);
     this.plansService = new BillingPlansService(billingRepo);
+    this.subscriptionService = new BillingSubscriptionService(billingRepo);
   }
 
   async createCheckoutSession(
@@ -29,5 +32,9 @@ export class BillingService {
 
   async getBillingPlans(tenantId: string) {
     return this.plansService.getPlansForTenant(tenantId);
+  }
+
+  async getBillingSubscription(tenantId: string) {
+    return this.subscriptionService.getSubscriptionForTenant(tenantId);
   }
 }

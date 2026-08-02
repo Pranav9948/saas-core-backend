@@ -1,4 +1,8 @@
-import type { BillingInterval, PlanName } from '@/generated/prisma/client.js';
+import type {
+  BillingInterval,
+  PlanName,
+  SubscriptionStatus,
+} from '@/generated/prisma/client.js';
 
 export interface BillingPlanFeatureDto {
   key: string;
@@ -35,3 +39,35 @@ export const PLAN_DESCRIPTIONS: Record<PlanName, string> = {
   BASIC: 'More capacity and features for growing fitness businesses.',
   PRO: 'Maximum limits and priority capabilities for established gyms.',
 };
+
+export interface BillingSubscriptionPlanDto {
+  name: PlanName;
+  description: string;
+  price: number;
+  currency: string;
+}
+
+export interface BillingSubscriptionReadRow {
+  status: SubscriptionStatus;
+  currentPeriodStart: Date | null;
+  currentPeriodEnd: Date | null;
+  cancelAtPeriodEnd: boolean;
+  plan: BillingSubscriptionPlanSnapshot;
+}
+
+export interface BillingSubscriptionPlanSnapshot {
+  name: PlanName;
+  price: number;
+  currency: string;
+  interval: BillingInterval;
+}
+
+export interface BillingSubscriptionResponseDto {
+  plan: BillingSubscriptionPlanDto;
+  status: SubscriptionStatus;
+  billingInterval: BillingInterval;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  isPaid: boolean;
+}

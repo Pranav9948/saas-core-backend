@@ -21,6 +21,8 @@ router.post(
 
 router.get('/plans', authenticate, billingController.getBillingPlans);
 
+router.get('/subscription', authenticate, billingController.getBillingSubscription);
+
 router.get('/plans/preview', billingController.getPlansPreview);
 
 router.get('/success', (_req: Request, res: Response) => {

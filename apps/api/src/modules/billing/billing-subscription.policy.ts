@@ -56,6 +56,12 @@ export function isAlreadySubscribedToPlan(
   );
 }
 
+export function isPaidCheckoutPlan(
+  plan: Plan,
+): plan is Plan & { stripePriceId: string } {
+  return plan.name !== 'FREE' && !!plan.stripePriceId;
+}
+
 /**
  * Validates plan eligibility for Stripe Checkout and throws domain errors.
  */

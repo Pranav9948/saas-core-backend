@@ -247,6 +247,53 @@ export class BillingRepository {
     };
   }
 
+  async getBillingSubscriptionReadModel(tenantId: string) {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        id: true,
+        subscriptions: {
+          select: {
+            status: true,
+            currentPeriodStart: true,
+            currentPeriodEnd: true,
+            cancelAtPeriodEnd: true,
+            plan: {
+              select: {
+                name: true,
+                price: true,
+                currency: true,
+                interval: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!tenant) {
+      return null;
+    }
+
+    return {
+      tenantId: tenant.id,
+      subscription: tenant.subscriptions[0] ?? null,
+    };
+  }
+
+  async findDefaultFreePlan() {
+    return prisma.plan.findFirst({
+      where: { name: 'FREE' },
+      select: {
+        name: true,
+        price: true,
+        currency: true,
+        interval: true,
+      },
+      orderBy: { interval: 'asc' },
+    });
+  }
+
    async getPlanFeaturesByTenant(tenantId: string) {
     const sub = await prisma.subscription.findUnique({
       where: { tenantId },
