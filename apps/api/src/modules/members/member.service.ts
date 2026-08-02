@@ -9,12 +9,14 @@ import { ErrorCode } from '@/exceptions/root.js';
 import { Prisma } from '@/generated/prisma/client.js';
 import { prisma } from '@/infra/db.js';
 import { BillingRepository } from '../billing/billing.repository.js';
+import { FeatureGuardService } from '../feature-usage/feature-guard.service.js';
 
 export class MemberService {
   constructor(
     private trainerRepo = new TrainerRepository(),
     private memberRepo = new MemberRepository(),
     private billingRepo = new BillingRepository(),
+    private featureGuard = new FeatureGuardService(),
   ) {}
 
   async createMember(
@@ -28,7 +30,7 @@ export class MemberService {
     },
     tenantId: string,
   ) {
-    await this.enforceMemberLimit(tenantId);
+    await this.featureGuard.ensureCanCreateMember(tenantId);
 
     const existing = await this.memberRepo.findByEmail(data.email, tenantId);
 
@@ -48,9 +50,6 @@ export class MemberService {
     if (subscription.status !== 'ACTIVE') {
       throw new Error('Subscription inactive');
     }
-
-    const memberCount = await this.memberRepo.count(tenantId);
-    const maxMembers = (subscription?.plan?.features as any)?.maxMembers;
 
     if (data.assignedTrainerId) {
       const trainer = await this.trainerRepo.findById(
@@ -181,19 +180,7 @@ export class MemberService {
   }
 
   async enforceMemberLimit(tenantId: string) {
-    const features = await this.billingRepo.getPlanFeaturesByTenant(tenantId);
-
-    if (!features.maxMembers) return;
-
-    const count = await prisma.member.count({
-      where: { tenantId },
-    });
-
-    if (count >= features.maxMembers) {
-      throw new BadRequestException(
-        `Member limit reached (${features.maxMembers}). Upgrade your plan.`,
-      );
-    }
+    await this.featureGuard.ensureCanCreateMember(tenantId);
   }
 
   async enforceFeature(tenantId: string, feature: string) {

@@ -48,7 +48,9 @@ function stripeAmountToDisplayAmount(amount: number, currency: string): number {
   return amount / 100;
 }
 
-function mapInvoiceStatus(status: Stripe.Invoice.Status | null): BillingPaymentStatus {
+function mapInvoiceStatus(
+  status: Stripe.Invoice.Status | null,
+): BillingPaymentStatus {
   if (!status) {
     return 'OPEN';
   }
@@ -63,7 +65,7 @@ export function mapStripeInvoiceToPaymentDto(
   const amountSource =
     invoice.status === 'paid'
       ? invoice.amount_paid
-      : invoice.amount_due ?? invoice.total ?? 0;
+      : (invoice.amount_due ?? invoice.total ?? 0);
 
   return {
     invoiceNumber: invoice.number,

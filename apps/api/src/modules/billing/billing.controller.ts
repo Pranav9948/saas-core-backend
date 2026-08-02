@@ -158,6 +158,24 @@ export const getPaymentHistory = async (
   }
 };
 
+export const getFeatureUsage = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const tenantId = req.user!.tenantId;
+    const data = await billingService.getFeatureUsage(tenantId);
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getPlansPreview = async (
   req: Request,
   res: Response,

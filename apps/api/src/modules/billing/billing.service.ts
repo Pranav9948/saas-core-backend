@@ -7,6 +7,7 @@ import { BillingSummaryService } from './billing-summary.service.js';
 import { BillingCustomerPortalService } from './billing-customer-portal.service.js';
 import { BillingPaymentHistoryService } from './billing-payment-history.service.js';
 import { DEFAULT_PAYMENT_HISTORY_LIMIT } from './billing.constants.js';
+import { FeatureUsageService } from '../feature-usage/feature-usage.service.js';
 import type Stripe from 'stripe';
 
 export class BillingService {
@@ -17,6 +18,7 @@ export class BillingService {
   private readonly summaryService: BillingSummaryService;
   private readonly customerPortalService: BillingCustomerPortalService;
   private readonly paymentHistoryService: BillingPaymentHistoryService;
+  private readonly featureUsageService: FeatureUsageService;
 
   constructor(billingRepo = new BillingRepository()) {
     this.checkoutService = new BillingCheckoutService(billingRepo);
@@ -26,6 +28,7 @@ export class BillingService {
     this.summaryService = new BillingSummaryService(billingRepo);
     this.customerPortalService = new BillingCustomerPortalService(billingRepo);
     this.paymentHistoryService = new BillingPaymentHistoryService(billingRepo);
+    this.featureUsageService = new FeatureUsageService();
   }
 
   async createCheckoutSession(
@@ -64,5 +67,9 @@ export class BillingService {
       limit: query.limit ?? DEFAULT_PAYMENT_HISTORY_LIMIT,
       startingAfter: query.startingAfter,
     });
+  }
+
+  async getFeatureUsage(tenantId: string) {
+    return this.featureUsageService.getUsageForTenant(tenantId);
   }
 }

@@ -54,9 +54,7 @@ export class BillingPaymentHistoryService {
       const invoices = await stripe.invoices.list({
         customer: tenant.stripeCustomerId,
         limit,
-        ...(query.startingAfter
-          ? { starting_after: query.startingAfter }
-          : {}),
+        ...(query.startingAfter ? { starting_after: query.startingAfter } : {}),
       });
 
       const data = mapStripeInvoicesToPaymentHistory(invoices);

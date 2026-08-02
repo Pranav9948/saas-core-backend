@@ -15,6 +15,7 @@ import { prisma } from '@/infra/db.js';
 import { TrainerRepository } from '../trainers/trainer.repository.js';
 import { TrainerService } from '../trainers/trainer.service.js';
 import { logger } from '@/core/logger.js';
+import { FeatureGuardService } from '../feature-usage/feature-guard.service.js';
 
 const slugify = slugifyPkg.default;
 
@@ -24,6 +25,7 @@ export class TenantService {
     private memberRepo = new MemberRepository(),
     private trainerRepo = new TrainerRepository(),
     private trainerService = new TrainerService(),
+    private featureGuard = new FeatureGuardService(),
   ) {}
 
   validateRole(inviterRole: string, targetRole: string) {
@@ -207,7 +209,7 @@ export class TenantService {
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
     if (data.role === 'TRAINER') {
-      await this.trainerService.enforceTrainerLimit(tenantId);
+      await this.featureGuard.ensureCanCreateTrainer(tenantId);
 
       const result = await this.tenantRepo.createTrainerWithTenant({
         tenantId,
@@ -232,6 +234,8 @@ export class TenantService {
         specialization: result.trainer.specialization,
       };
     }
+
+    await this.featureGuard.ensureCanCreateStaff(tenantId);
 
     const user = await this.tenantRepo.createUserWithTenant({
       tenantId,
@@ -290,6 +294,12 @@ export class TenantService {
 
     if (exists) {
       throw new BadRequestException('User already part of this tenant');
+    }
+
+    if (invite.role === 'TRAINER') {
+      await this.featureGuard.ensureCanCreateTrainer(invite.tenantId);
+    } else if (invite.role === 'STAFF' || invite.role === 'ADMIN') {
+      await this.featureGuard.ensureCanCreateStaff(invite.tenantId);
     }
 
     await this.tenantRepo.addUserToTenant({

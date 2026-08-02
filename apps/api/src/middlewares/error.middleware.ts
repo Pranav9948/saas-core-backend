@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { HttpException, ErrorCode } from '../exceptions/root.js';
+import { FeatureLimitReachedException } from '../exceptions/feature-limit.exception.js';
 import { ZodError } from 'zod';
 import { Prisma } from '@/generated/prisma/client.js';
 import { logger } from '@/core/logger.js';
@@ -45,6 +46,18 @@ export const errorMiddleware = (
       logger.warn({
         msg: 'Client error',
         ...baseLog,
+      });
+    }
+
+    if (error instanceof FeatureLimitReachedException) {
+      return res.status(statusCode).json({
+        success: false,
+        code: error.code,
+        message,
+        feature: error.feature,
+        currentPlan: error.currentPlan,
+        limit: error.limit,
+        used: error.used,
       });
     }
 

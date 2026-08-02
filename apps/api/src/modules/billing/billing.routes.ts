@@ -8,6 +8,8 @@ import {
 import * as billingController from './billing.controller.js';
 import { authenticate } from '@/middlewares/auth.middleware.js';
 import { validate } from '@/middlewares/validate.middleware.js';
+import { authorizePermissions } from '@/middlewares/permission.middleware.js';
+import { PERMISSIONS } from '../rbac/permissions.constants.js';
 import { CreateCheckoutSessionSchema, PaymentHistoryQuerySchema } from './billing.schema.js';
 
 const router: ExpressRouter = Router();
@@ -40,6 +42,13 @@ router.get(
   authenticate,
   validate(PaymentHistoryQuerySchema),
   billingController.getPaymentHistory,
+);
+
+router.get(
+  '/usage',
+  authenticate,
+  authorizePermissions(PERMISSIONS.TENANT_VIEW),
+  billingController.getFeatureUsage,
 );
 
 router.get('/plans/preview', billingController.getPlansPreview);

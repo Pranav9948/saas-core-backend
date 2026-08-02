@@ -9,6 +9,7 @@ import { ErrorCode } from '@/exceptions/root.js';
 import { Prisma } from '@/generated/prisma/client.js';
 import { TenantUserRepository } from '../tenant/tenant.userrepository.js';
 import { BillingRepository } from '../billing/billing.repository.js';
+import { FeatureGuardService } from '../feature-usage/feature-guard.service.js';
 
 export class TrainerService {
   constructor(
@@ -16,6 +17,7 @@ export class TrainerService {
     private trainerRepo = new TrainerRepository(),
     private tenantUserRepo = new TenantUserRepository(),
     private billingRepo = new BillingRepository(),
+    private featureGuard = new FeatureGuardService(),
   ) {}
 
   async registerTrainer(
@@ -26,7 +28,7 @@ export class TrainerService {
     },
     tenantId: string,
   ) {
-    await this.enforceTrainerLimit(tenantId);
+    await this.featureGuard.ensureCanCreateTrainer(tenantId);
 
     const user = await this.userRepo.findById(data.userId);
 
@@ -44,9 +46,6 @@ export class TrainerService {
     if (subscription.status !== 'ACTIVE') {
       throw new Error('Subscription inactive');
     }
-
-    const trainerCount = await this.trainerRepo.count(tenantId);
-    const maxTrainers = (subscription?.plan?.features as any)?.maxTrainers;
 
     //  Check user belongs to tenant
     const tenantUser = await this.tenantUserRepo.findUserInTenant(
@@ -185,18 +184,6 @@ export class TrainerService {
   }
 
   async enforceTrainerLimit(tenantId: string) {
-    const features = await this.billingRepo.getPlanFeaturesByTenant(tenantId);
-
-    if (!features.maxTrainers) return;
-
-    const count = await prisma.trainer.count({
-      where: { tenantId },
-    });
-
-    if (count >= features.maxTrainers) {
-      throw new BadRequestException(
-        `Trainer limit reached (${features.maxTrainers}). Upgrade your plan.`,
-      );
-    }
+    await this.featureGuard.ensureCanCreateTrainer(tenantId);
   }
 }

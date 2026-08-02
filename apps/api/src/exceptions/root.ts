@@ -17,6 +17,7 @@ export enum ErrorCode {
   //  Permission / Access (4xxx)
   FORBIDDEN = 4001, // Authenticated but not allowed
   ACCESS_DENIED = 4002,
+  FEATURE_LIMIT_REACHED = 4003,
 
   //  Server / System Errors (5xxx)
   INTERNAL_EXCEPTION = 5001,
