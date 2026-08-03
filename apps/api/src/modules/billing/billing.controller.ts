@@ -9,6 +9,7 @@ import { BillingService } from './billing.service.js';
 import { prisma } from '@/infra/db.js';
 import { logger } from '@/core/logger.js';
 import { HttpException } from '@/exceptions/root.js';
+import { logBillingTrace, logBillingTraceError } from './billing-trace.js';
 
 const billingService = new BillingService();
 
@@ -22,18 +23,42 @@ export const createCheckoutSession = async (
     const userId = req.user!.userId;
     const { planId } = req.body;
 
+    logBillingTrace('checkout.request', {
+      tenantId,
+      userId,
+      planId,
+      route: 'POST /billing/checkout-session',
+    });
+
     const url = await billingService.createCheckoutSession(
       tenantId,
       userId,
       planId,
     );
 
+    logBillingTrace('checkout.response', {
+      tenantId,
+      planId,
+      checkoutUrlHost: new URL(url).host,
+      route: 'POST /billing/checkout-session',
+      status: 200,
+    });
+
     res.status(200).json({
       success: true,
       data: { url },
     });
   } catch (error) {
-    if (!(error instanceof HttpException)) {
+    if (error instanceof HttpException) {
+      logBillingTraceError('checkout.failed', {
+        tenantId: req.user?.tenantId,
+        userId: req.user?.userId,
+        planId: req.body?.planId,
+        status: error.statusCode,
+        errorCode: error.errorCode,
+        message: error.message,
+      });
+    } else if (!(error instanceof HttpException)) {
       logger.error({
         msg: 'Checkout session creation failed',
         tenantId: req.user?.tenantId,

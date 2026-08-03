@@ -4,6 +4,10 @@ import Stripe from 'stripe';
 import { config } from '@/core/config.js';
 import { logger } from '@/core/logger.js';
 import { enqueueStripeEvent } from '@/modules/jobs/producers/stripe.producer.js';
+import {
+  logBillingTrace,
+  logBillingTraceError,
+} from '@/modules/billing/billing-trace.js';
 
 export const webhookHandler = async (
   req: Request,
@@ -31,6 +35,12 @@ export const webhookHandler = async (
       eventId: event.id,
       eventType: event.type,
     });
+
+    logBillingTrace('webhook.received', {
+      eventId: event.id,
+      eventType: event.type,
+      route: 'POST /webhooks/stripe',
+    });
   } catch (err: unknown) {
     logger.error({
       msg: 'Stripe webhook signature verification failed',
@@ -49,8 +59,18 @@ export const webhookHandler = async (
       eventType: event.type,
     });
 
+    logBillingTrace('webhook.enqueued', {
+      eventId: event.id,
+      eventType: event.type,
+    });
+
     res.status(200).json({ received: true });
   } catch (err: unknown) {
+    logBillingTraceError('webhook.enqueue_failed', {
+      eventId: event.id,
+      eventType: event.type,
+      err: err instanceof Error ? err.message : String(err),
+    });
     logger.error({
       msg: 'Stripe webhook enqueue failed',
       eventId: event.id,

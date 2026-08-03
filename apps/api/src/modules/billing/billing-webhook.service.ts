@@ -18,6 +18,7 @@ import type {
   WebhookProcessingResult,
 } from './billing-webhook.types.js';
 import { stripe } from './stripe.service.js';
+import { logBillingTrace } from './billing-trace.js';
 
 export class BillingWebhookService {
   constructor(private readonly billingRepo = new BillingRepository()) {}
@@ -60,6 +61,11 @@ export class BillingWebhookService {
         { timeout: 30_000 },
       );
     } catch (error) {
+      logBillingTrace('webhook.handler.failed', {
+        eventId,
+        eventType,
+        err: error instanceof Error ? error.message : String(error),
+      });
       const durationMs = Date.now() - startedAt;
       logger.error({
         msg: 'Webhook processing failed',
@@ -75,6 +81,7 @@ export class BillingWebhookService {
     const durationMs = Date.now() - startedAt;
 
     if (duplicate) {
+      logBillingTrace('webhook.duplicate_skipped', { eventId, eventType });
       logger.warn({
         msg: 'Webhook duplicate skipped',
         eventId,
@@ -93,6 +100,15 @@ export class BillingWebhookService {
       stripeSubscriptionId: processingResult.stripeSubscriptionId,
       durationMs,
       result: processingResult.result,
+    });
+
+    logBillingTrace(`webhook.handler.${eventType}`, {
+      eventId,
+      eventType,
+      tenantId: processingResult.tenantId,
+      stripeSubscriptionId: processingResult.stripeSubscriptionId,
+      result: processingResult.result,
+      durationMs,
     });
 
     return processingResult;
@@ -479,5 +495,12 @@ export class BillingWebhookService {
       },
       tx,
     );
+
+    logBillingTrace('webhook.db.synced', {
+      tenantId: data.tenantId,
+      planId: data.planId,
+      status: data.status,
+      stripeSubscriptionId: data.stripeSubscriptionId,
+    });
   }
 }

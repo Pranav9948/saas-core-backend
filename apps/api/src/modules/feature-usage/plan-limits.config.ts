@@ -5,20 +5,16 @@ export type PlanFeatureLimit = number | null;
 
 export type PlanLimitsConfig = Record<Feature, PlanFeatureLimit>;
 
-/**
- * Single source of truth for plan feature limits.
- * `null` = unlimited.
- */
 export const PLAN_FEATURE_LIMITS: Record<PlanName, PlanLimitsConfig> = {
   FREE: {
     [Feature.MEMBERS]: 5,
     [Feature.TRAINERS]: 1,
-    [Feature.STAFF]: 2,
+    [Feature.STAFF]: 1,
   },
   BASIC: {
-    [Feature.MEMBERS]: 100,
-    [Feature.TRAINERS]: 10,
-    [Feature.STAFF]: 10,
+    [Feature.MEMBERS]: 50,
+    [Feature.TRAINERS]: 5,
+    [Feature.STAFF]: 3,
   },
   PRO: {
     [Feature.MEMBERS]: null,

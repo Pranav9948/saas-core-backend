@@ -1,6 +1,7 @@
 import type Stripe from 'stripe';
 import { logger } from '@/core/logger.js';
 import { BillingService } from '@/modules/billing/billing.service.js';
+import { logBillingTrace } from '@/modules/billing/billing-trace.js';
 
 const billingService = new BillingService();
 
@@ -15,6 +16,15 @@ export const stripeProcessor = {
       eventType,
     });
 
-    await billingService.handleEvent(event);
+    logBillingTrace('webhook.job.start', { eventId, eventType });
+
+    const result = await billingService.handleEvent(event);
+
+    logBillingTrace('webhook.job.complete', {
+      eventId,
+      eventType,
+      result: result.result,
+      tenantId: result.tenantId,
+    });
   },
 };

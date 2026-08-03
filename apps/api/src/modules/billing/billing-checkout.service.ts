@@ -17,6 +17,7 @@ import {
   isPaidCheckoutPlan,
 } from './billing-subscription.policy.js';
 import { stripe } from './stripe.service.js';
+import { logBillingTrace, logBillingTraceError } from './billing-trace.js';
 
 export interface CreateCheckoutSessionParams {
   tenantId: string;
@@ -44,9 +45,23 @@ export class BillingCheckoutService {
       throw new NotFoundException('Tenant not found', ErrorCode.NOT_FOUND);
     }
 
+    logBillingTrace('checkout.context_loaded', {
+      tenantId,
+      planId,
+      currentPlanName: checkoutContext.subscription?.plan.name ?? 'NONE',
+      currentStatus: checkoutContext.subscription?.status ?? 'NONE',
+      hasStripeCustomer: Boolean(checkoutContext.stripeCustomerId),
+    });
+
     const subscription = checkoutContext.subscription;
 
     if (hasActivePaidSubscription(subscription)) {
+      logBillingTraceError('checkout.blocked_active_paid', {
+        tenantId,
+        planId,
+        subscriptionStatus: subscription?.status,
+        planName: subscription?.plan.name,
+      });
       logger.warn({
         msg: 'Checkout blocked — active paid subscription exists',
         tenantId,
@@ -63,6 +78,7 @@ export class BillingCheckoutService {
     }
 
     if (isAlreadySubscribedToPlan(subscription, planId)) {
+      logBillingTraceError('checkout.blocked_same_plan', { tenantId, planId });
       throw new ConflictException(
         'You are already subscribed to this plan.',
         ErrorCode.RESOURCE_ALREADY_EXISTS,
@@ -72,10 +88,16 @@ export class BillingCheckoutService {
     const plan = await this.billingRepo.getPlanById(planId);
 
     if (!plan) {
+      logBillingTraceError('checkout.invalid_plan', { tenantId, planId });
       throw new BadRequestException('Invalid plan');
     }
 
     if (!isPaidCheckoutPlan(plan)) {
+      logBillingTraceError('checkout.plan_not_checkout_eligible', {
+        tenantId,
+        planId,
+        planName: plan.name,
+      });
       throw new BadRequestException(
         'Selected plan is not available for Stripe checkout',
       );
@@ -122,15 +144,14 @@ export class BillingCheckoutService {
       throw new BadRequestException('Failed to create checkout session');
     }
 
-    logger.info({
-      msg: 'Checkout session created',
+    logBillingTrace('checkout.stripe_session_created', {
       tenantId,
       userId,
       planId: plan.id,
       planName: plan.name,
       billingInterval: plan.interval,
-      stripePriceId: plan.stripePriceId,
       sessionId: session.id,
+      stripeCustomerId: stripeCustomerId,
     });
 
     return session.url;
