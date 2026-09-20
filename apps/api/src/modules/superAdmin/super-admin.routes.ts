@@ -37,6 +37,13 @@ router.post(
 );
 
 router.get(
+  '/me',
+  authenticateSuperAdmin,
+  requireSuperAdmin,
+  superAdminAuthController.getMe,
+);
+
+router.get(
   '/get-all-owners-with-gyms',
   authenticateSuperAdmin,
   requireSuperAdmin,

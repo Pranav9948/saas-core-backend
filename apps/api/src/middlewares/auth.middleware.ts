@@ -1,3 +1,4 @@
+import { readAccessTokenFromRequest } from '@/core/auth-cookies.js';
 import { Security } from '@/core/security.js';
 import { UnauthorizedException } from '@/exceptions/exceptions.js';
 import { Request, Response, NextFunction } from 'express';
@@ -7,12 +8,11 @@ export const authenticate = (
   _res: Response,
   next: NextFunction,
 ): void => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
+  const token = readAccessTokenFromRequest(req);
+  if (!token) {
     throw new UnauthorizedException('No token provided');
   }
 
-  const token = authHeader.split(' ')[1];
   try {
     const decoded = Security.verifyAccessToken(token);
     if (!decoded.tenantId) {

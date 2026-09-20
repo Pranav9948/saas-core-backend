@@ -44,6 +44,16 @@ export class ConflictException extends HttpException {
   }
 }
 
+// 502 - Upstream payment provider unavailable
+export class BadGatewayException extends HttpException {
+  constructor(
+    message: string = 'Payment service temporarily unavailable',
+    errorCode: ErrorCode = ErrorCode.SERVICE_UNAVAILABLE,
+  ) {
+    super(message, 502, errorCode, null);
+  }
+}
+
 // 500 - Something went wrong in our code/database
 export class InternalException extends HttpException {
   constructor(

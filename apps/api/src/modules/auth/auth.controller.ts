@@ -8,6 +8,7 @@ import {
 import { ErrorCode } from '@/exceptions/root.js';
 import { getTenantPrisma } from '@/infra/tenant-prisma.js';
 import { logger } from '@/core/logger.js';
+import { clearAuthCookies, setAuthCookies } from '@/core/auth-cookies.js';
 
 export const registerGym = async (
   req: Request,
@@ -17,12 +18,9 @@ export const registerGym = async (
   try {
     const result = await authService.registerGym(req.body);
 
-    res.cookie('refreshToken', result.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/',
+    setAuthCookies(res, {
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
     });
 
     res.status(201).json({
@@ -49,13 +47,7 @@ export const login = async (
       req.body,
     );
 
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/',
-    });
+    setAuthCookies(res, { accessToken, refreshToken });
 
     res.json({
       accessToken,
@@ -87,13 +79,7 @@ export const logout = async (
       await authService.logout(refreshToken, tenantId);
     }
 
-    // 2. Clear the Cookie from the browser
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/',
-    });
+    clearAuthCookies(res);
 
     res.status(200).json({ success: true, message: 'Logged out successfully' });
   } catch (error) {
@@ -147,13 +133,7 @@ export const rotateRefreshToken = async (
     const { accessToken, refreshToken } =
       await authService.rotateRefreshToken(oldToken);
 
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/',
-    });
+    setAuthCookies(res, { accessToken, refreshToken });
 
     res.set('Cache-Control', 'no-store');
 

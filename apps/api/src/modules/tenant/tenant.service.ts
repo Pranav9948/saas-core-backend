@@ -13,7 +13,9 @@ import bcrypt from 'bcrypt';
 import { MemberRepository } from '../members/member.repository.js';
 import { prisma } from '@/infra/db.js';
 import { TrainerRepository } from '../trainers/trainer.repository.js';
+import { TrainerService } from '../trainers/trainer.service.js';
 import { logger } from '@/core/logger.js';
+import { FeatureGuardService } from '../feature-usage/feature-guard.service.js';
 
 const slugify = slugifyPkg.default;
 
@@ -22,6 +24,8 @@ export class TenantService {
     private tenantRepo: TenantRepository,
     private memberRepo = new MemberRepository(),
     private trainerRepo = new TrainerRepository(),
+    private trainerService = new TrainerService(),
+    private featureGuard = new FeatureGuardService(),
   ) {}
 
   validateRole(inviterRole: string, targetRole: string) {
@@ -45,6 +49,57 @@ export class TenantService {
 
   async getCurrentTenant(tenantId: string) {
     return this.tenantRepo.findById(tenantId);
+  }
+
+  async listTeamMembers(tenantId: string) {
+    const members = await this.tenantRepo.listTenantUsers(tenantId);
+
+    return members.map((member) => ({
+      id: member.id,
+      userId: member.user.id,
+      email: member.user.email,
+      firstName: member.user.firstName,
+      lastName: member.user.lastName,
+      role: member.role,
+      isActive: member.user.isActive,
+      joinedAt: member.createdAt,
+    }));
+  }
+
+  async listPendingInvites(tenantId: string) {
+    return this.tenantRepo.listPendingInvites(tenantId);
+  }
+
+  async cancelInvite(tenantId: string, inviteId: string) {
+    const invite = await this.tenantRepo.findInviteById(inviteId, tenantId);
+
+    if (!invite) {
+      throw new NotFoundException('Invite not found', ErrorCode.NOT_FOUND);
+    }
+
+    await this.tenantRepo.deleteInvite(invite.id);
+    return { id: invite.id };
+  }
+
+  async getInvitePreview(token: string) {
+    const invite = await this.tenantRepo.findInviteByToken(token);
+
+    if (!invite) {
+      throw new NotFoundException('Invalid invite link', ErrorCode.NOT_FOUND);
+    }
+
+    const tenant = await this.tenantRepo.findById(invite.tenantId);
+    const expired = invite.expiresAt < new Date();
+
+    return {
+      email: invite.email,
+      firstName: invite.firstName,
+      lastName: invite.lastName,
+      role: invite.role,
+      gymName: tenant?.name ?? 'Your gym',
+      expiresAt: invite.expiresAt,
+      expired,
+    };
   }
 
   async updateTenant(tenantId: string, data: any) {
@@ -96,71 +151,113 @@ export class TenantService {
   async inviteUser(tenantId: string, inviterRole: string, data: any) {
     this.validateRole(inviterRole, data.role);
 
+    const email = data.email.trim().toLowerCase();
+
     // Check duplicate in same tenant
-    const exists = await this.tenantRepo.userExistsInTenant(
-      data.email,
-      tenantId,
-    );
+    const exists = await this.tenantRepo.userExistsInTenant(email, tenantId);
     if (exists) {
       throw new BadRequestException('User already exists in this tenant');
     }
 
-    // Generate token
-
     const token = crypto.randomBytes(32).toString('hex');
-
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
     const tenantDetails = await this.tenantRepo.findById(tenantId);
 
+    await this.tenantRepo.deletePendingInvitesForEmail(email, tenantId);
+
     await this.tenantRepo.createInviteToken({
-      email: data.email,
-      firstName: data.firstName,
-      lastName: data.lastName,
+      email,
+      firstName: data.firstName.trim(),
+      lastName: data.lastName.trim(),
       tenantId,
       role: data.role,
       token,
       expiresAt,
     });
 
-    const inviteLink = `http://localhost:3000/accept-invite?token=${token}`;
+    const inviteLink = `${config.FRONTEND_URL}/accept-invite?token=${token}`;
 
-    // Send Email
     await this.tenantRepo.sendInviteEmail(
-      data.email,
+      email,
       inviteLink,
-      data.firstname,
-      tenantDetails?.name ?? 'gym sass team',
+      data.firstName,
+      tenantDetails?.name ?? 'GymFlow',
       data.role,
       tenantId,
     );
 
-    return { email: data.email };
+    return { email };
   }
 
   async createUserDirect(tenantId: string, inviterRole: string, data: any) {
     this.validateRole(inviterRole, data.role);
 
-    const exists = await this.tenantRepo.userExistsInTenant(
-      data.email,
-      tenantId,
-    );
+    const email = data.email.trim().toLowerCase();
+
+    const exists = await this.tenantRepo.userExistsInTenant(email, tenantId);
     if (exists) {
       throw new BadRequestException('User already exists in this tenant');
     }
 
+    const existingGlobal = await this.tenantRepo.findUserByEmail(email);
+    if (existingGlobal) {
+      throw new BadRequestException(
+        'An account with this email already exists. Send an invite instead.',
+      );
+    }
+
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    return this.tenantRepo.createUserWithTenant({
+    if (data.role === 'TRAINER') {
+      await this.featureGuard.ensureCanCreateTrainer(tenantId);
+
+      const result = await this.tenantRepo.createTrainerWithTenant({
+        tenantId,
+        user: {
+          email,
+          passwordHash: hashedPassword,
+          firstName: data.firstName.trim(),
+          lastName: data.lastName.trim(),
+        },
+        specialization: data.specialization.trim(),
+        bio: data.bio?.trim() || null,
+      });
+
+      return {
+        id: result.user.id,
+        email: result.user.email,
+        firstName: result.user.firstName,
+        lastName: result.user.lastName,
+        role: 'TRAINER',
+        isActive: result.user.isActive,
+        trainerId: result.trainer.id,
+        specialization: result.trainer.specialization,
+      };
+    }
+
+    await this.featureGuard.ensureCanCreateStaff(tenantId);
+
+    const user = await this.tenantRepo.createUserWithTenant({
       tenantId,
       user: {
-        email: data.email,
+        email,
         passwordHash: hashedPassword,
-        firstName: data.firstName,
-        lastName: data.lastName,
+        firstName: data.firstName.trim(),
+        lastName: data.lastName.trim(),
       },
       role: data.role,
     });
+
+    const tenantUser = await this.tenantRepo.findTenantUser(user.id, tenantId);
+
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: tenantUser?.role ?? data.role,
+      isActive: user.isActive,
+    };
   }
 
   async acceptInvite(data: { token: string; password: string }) {
@@ -199,17 +296,37 @@ export class TenantService {
       throw new BadRequestException('User already part of this tenant');
     }
 
-    // Attach to tenant
+    if (invite.role === 'TRAINER') {
+      await this.featureGuard.ensureCanCreateTrainer(invite.tenantId);
+    } else if (invite.role === 'STAFF' || invite.role === 'ADMIN') {
+      await this.featureGuard.ensureCanCreateStaff(invite.tenantId);
+    }
+
     await this.tenantRepo.addUserToTenant({
       userId: user.id,
       tenantId: invite.tenantId,
       role: invite.role,
     });
 
-    // Delete invite (one-time use)
     await this.tenantRepo.deleteInvite(invite.id);
 
-    return { userId: user.id };
+    const tenantUser = await this.tenantRepo.findTenantUser(
+      user.id,
+      invite.tenantId,
+    );
+
+    return {
+      userId: user.id,
+      tenantId: invite.tenantId,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: tenantUser?.role ?? invite.role,
+        isActive: user.isActive,
+      },
+    };
   }
 
   async upgradePlan(

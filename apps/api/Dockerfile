@@ -2,8 +2,9 @@
 FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10.28.2
 
+COPY .npmrc ./
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/api/package.json ./apps/api/
 COPY packages/core/package.json ./packages/core/
@@ -14,7 +15,7 @@ RUN pnpm install --frozen-lockfile --shamefully-hoist
 # STAGE 2: Builder
 FROM node:20-alpine AS builder
 WORKDIR /app
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10.28.2
 # Copy ALL node_modules to ensure symlinks work
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
@@ -31,7 +32,7 @@ RUN cd apps/api && pnpm exec tsc && pnpm exec tsc-alias
 
 FROM node:20-alpine AS development
 WORKDIR /app
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10.28.2
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY apps/api/prisma ./apps/api/prisma

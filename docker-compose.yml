@@ -42,15 +42,30 @@ services:
 
     environment:
       CHOKIDAR_USEPOLLING: true
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-2026}@postgres:5432/dev_saas_backend?schema=public&connection_limit=30
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
 
     volumes:
       - ./apps:/app/apps
       - /app/apps/api/node_modules
 
-    command: npx tsx watch --tsconfig apps/api/tsconfig.json apps/api/src/index.ts
+    command: sh -c "(cd /app/apps/api && npx prisma migrate deploy) && npx tsx watch --tsconfig apps/api/tsconfig.json apps/api/src/index.ts"
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(''http://127.0.0.1:5000/health'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   redis:
@@ -78,10 +93,15 @@ services:
     container_name: saas_notification_service
     restart: always
     env_file:
-      - ./apps/notification-service/.env.development
+      - ./apps/notification-service/.env.docker
     environment:
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      MAIL_HOST: mailhog
+      MAIL_PORT: 1025
+      MAIL_USER: ''
+      MAIL_PASS: ''
+      MAIL_FROM: noreply@gymflow.local
     ports:
       - '4001:4001'
     volumes:
@@ -117,6 +137,7 @@ services:
     environment:
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-2026}@postgres:5432/dev_saas_backend?schema=public&connection_limit=30
 
     volumes:
       - ./apps:/app/apps
@@ -125,6 +146,8 @@ services:
     command: npx tsx watch --tsconfig apps/api/tsconfig.json apps/api/src/modules/jobs/workers/stripe.worker.ts
 
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
 
@@ -142,6 +165,7 @@ services:
     environment:
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-2026}@postgres:5432/dev_saas_backend?schema=public&connection_limit=30
 
     volumes:
       - ./apps:/app/apps
@@ -150,6 +174,8 @@ services:
     command: npx tsx watch --tsconfig apps/api/tsconfig.json apps/api/src/modules/jobs/workers/analytics.worker.ts
 
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
 

@@ -2,7 +2,13 @@ import { z } from 'zod';
 
 export const CreateCheckoutSessionSchema = z.object({
   body: z.object({
-    plan: z.enum(['BASIC', 'PRO']),
-    interval: z.enum(['MONTHLY', 'YEARLY']),
+    planId: z.string().uuid('Invalid plan ID'),
+  }),
+});
+
+export const PaymentHistoryQuerySchema = z.object({
+  query: z.object({
+    limit: z.coerce.number().int().min(1).max(100).optional(),
+    starting_after: z.string().min(1).optional(),
   }),
 });

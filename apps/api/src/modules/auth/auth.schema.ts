@@ -44,7 +44,7 @@ export const RegisterGymSchema = z.object({
       .string({ error: 'Phone number is required' })
       .trim()
       .min(8, 'Phone number must be at least 8 digits')
-      .max(15, 'Phone number cannot exceed 15 digits')
+      .max(20, 'Phone number cannot exceed 20 digits')
       .regex(/^[0-9+\-() ]+$/, 'Invalid phone number format'),
 
     contactEmail: z
@@ -64,6 +64,12 @@ export const RegisterGymSchema = z.object({
       .trim()
       .min(2, 'City must be at least 2 characters')
       .max(100, 'City name too long'),
+
+    state: z
+      .string({ error: 'State is required' })
+      .trim()
+      .min(2, 'State must be at least 2 characters')
+      .max(100, 'State name too long'),
 
     country: z
       .string({ error: 'Country is required' })

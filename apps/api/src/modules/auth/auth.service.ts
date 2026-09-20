@@ -5,14 +5,20 @@ import {
   BadRequestException,
   ConflictException,
   InternalException,
+  NotFoundException,
   UnauthorizedException,
 } from '@/exceptions/exceptions.js';
 import { ErrorCode } from '@/exceptions/root.js';
 import { hashToken, Security } from '@/core/security.js';
 import { TenantRepository } from '../tenant/tenant.repository.js';
+import { resolveRoleIdForUser } from '../rbac/resolve-role-id.js';
 import { eventBus } from '../events/event-bus.js';
 import { EVENTS } from '../events/events.js';
 import { logger } from '@/core/logger.js';
+import {
+  assignPermissionsToRoles,
+  createRolesForTenant,
+} from '../rbac/rbac.seed.js';
 
 export class AuthService {
   private tenantService: TenantService;
@@ -49,7 +55,7 @@ export class AuthService {
   async login(data: any) {
     const user = await this.userRepo.findByEmailGlobal(data.email);
 
-    if (!user) throw new UnauthorizedException('Invalid email or password');
+    if (!user) throw new NotFoundException('Invalid email or password', 3002);
     if (!user.isActive) {
       throw new UnauthorizedException('Account disabled');
     }
@@ -173,10 +179,12 @@ export class AuthService {
         name: data.gymName,
         slug,
         contactPhone: data.contactPhone,
-        contactEmail: data.email,
+        contactEmail: data.contactEmail ?? data.email,
         address: data.address,
         city: data.city,
+        state: data.state,
         country: data.country,
+        timezone: data.timezone ?? 'UTC',
       },
       user: {
         email: data.email,
@@ -186,6 +194,9 @@ export class AuthService {
         role: 'OWNER',
       },
     });
+
+    const roles = await createRolesForTenant(result.tenant.id);
+    await assignPermissionsToRoles(roles);
 
     const auth = await this.generateAuthResponse(result.user, result.tenant.id);
 
@@ -211,10 +222,17 @@ export class AuthService {
       throw new UnauthorizedException('User not linked to tenant');
     }
 
+    const roleId = await resolveRoleIdForUser({
+      userId: user.id,
+      tenantId,
+      role: tenantUser.role,
+      roleId: tenantUser.roleId,
+    });
+
     const accessToken = this.security.generateAccessToken({
       userId: user.id,
       tenantId,
-      roleId: tenantUser.roleId!,
+      roleId,
       role: tenantUser.role,
     });
 
@@ -232,6 +250,35 @@ export class AuthService {
     );
 
     return { user, accessToken, refreshToken };
+  }
+
+  async createSessionForUser(userId: string, tenantId: string) {
+    const user = await this.userRepo.findById(userId);
+
+    if (!user) {
+      throw new NotFoundException('User not found', ErrorCode.NOT_FOUND);
+    }
+
+    const tenantUser = await this.tenantRepo.findTenantUser(userId, tenantId);
+
+    if (!tenantUser) {
+      throw new UnauthorizedException('User not linked to tenant');
+    }
+
+    const authResponse = await this.generateAuthResponse(user, tenantId);
+
+    return {
+      ...authResponse,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: tenantUser.role,
+        isActive: user.isActive,
+      },
+      tenantId,
+    };
   }
 }
 

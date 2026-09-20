@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { readAccessTokenFromRequest } from '@/core/auth-cookies.js';
 import { SuperAdminSecurity } from '@/core/super-admin.security.js';
 import {
   UnauthorizedException,
@@ -24,12 +25,10 @@ export const authenticateSuperAdmin = async (
   next: NextFunction,
 ) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) {
+    const token = readAccessTokenFromRequest(req);
+    if (!token) {
       throw new UnauthorizedException('No token provided');
     }
-
-    const token = authHeader.split(' ')[1];
 
     try {
       const decoded = SuperAdminSecurity.verifyAccessToken(token);

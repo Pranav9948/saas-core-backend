@@ -19,6 +19,7 @@ router.post(
 router.get(
   '/:memberId',
   authenticate,
+  authorizePermissions(PERMISSIONS.GOAL_VIEW),
   validate(MemberGoalParamSchema),
   getGoals,
 );

@@ -18,7 +18,23 @@ export const PERMISSIONS = {
   USER_INVITE: 'user:invite',
   USER_UPDATE_ROLE: 'user:update-role',
   USER_REMOVE: 'user:remove',
+
   GOAL_CREATE: 'goal:create',
+  GOAL_VIEW: 'goal:view',
+
+  ROLE_CREATE: 'role:create',
+  ROLE_VIEW: 'role:view',
+  ROLE_UPDATE: 'role:update',
+  ROLE_DELETE: 'role:delete',
 } as const;
 
 export const ALL_PERMISSIONS = Object.values(PERMISSIONS);
+
+export const SYSTEM_ROLE_NAMES = [
+  'OWNER',
+  'ADMIN',
+  'STAFF',
+  'TRAINER',
+] as const;
+
+export const PROTECTED_ROLE_NAMES = ['OWNER'] as const;

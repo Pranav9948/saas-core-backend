@@ -12,6 +12,8 @@
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules NODE_ENV=test jest --runInBand --forceExit",
     "pretest": "dotenv -p .env.test -- npx prisma db push --accept-data-loss",
     "seed": "tsx prisma/seed.ts",
+    "db:seed:permissions": "tsx src/modules/rbac/seed-permissions.ts",
+    "db:backfill:role-id": "tsx scripts/backfill-roleId.ts",
     "prisma:reset": "prisma migrate reset",
     "prisma:dev": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",

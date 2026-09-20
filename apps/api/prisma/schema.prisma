@@ -16,6 +16,7 @@ model Tenant {
   updatedAt        DateTime       @updatedAt @map("updated_at")
   address          String
   city             String
+  state            String         @default("")
   contactEmail     String         @map("contact_email")
   contactPhone     String         @map("contact_phone")
   country          String
