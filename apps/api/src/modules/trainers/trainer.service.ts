@@ -2,6 +2,7 @@ import { TrainerRepository } from './trainer.repository.js';
 import {
   NotFoundException,
   BadRequestException,
+  ConflictException,
 } from '@/exceptions/exceptions.js';
 import { UserRepository } from '../auth/auth.repository.js';
 import { prisma } from '@/infra/db.js';
@@ -40,11 +41,13 @@ export class TrainerService {
       await this.billingRepo.getSubscriptionWithPlan(tenantId);
 
     if (!subscription) {
-      throw new Error('Subscription not found');
+      throw new NotFoundException('Subscription not found', ErrorCode.NOT_FOUND);
     }
 
     if (subscription.status !== 'ACTIVE') {
-      throw new Error('Subscription inactive');
+      throw new BadRequestException(
+        'This gym does not have an active subscription',
+      );
     }
 
     //  Check user belongs to tenant
@@ -54,11 +57,16 @@ export class TrainerService {
     );
 
     if (!tenantUser) {
-      throw new BadRequestException('User does not belong to this tenant');
+      throw new BadRequestException('This user does not belong to this gym');
     }
 
     const existing = await this.trainerRepo.findByUserId(data.userId, tenantId);
-    if (existing) throw new BadRequestException('User is already a trainer');
+    if (existing) {
+      throw new ConflictException(
+        'This user is already registered as a trainer',
+        ErrorCode.RESOURCE_ALREADY_EXISTS,
+      );
+    }
 
     // 4️ Transaction
 
@@ -110,7 +118,7 @@ export class TrainerService {
     const trainer = await this.trainerRepo.findById(id, tenantId);
     if (!trainer)
       throw new NotFoundException(
-        'Trainer profile not found',
+        'Trainer not found',
         ErrorCode.NOT_FOUND,
       );
     return trainer;

@@ -14,42 +14,84 @@ const passwordSchema = z
 
 export const UpdateTenantSchema = z.object({
   body: z.object({
-    name: z.string().min(2).max(100).optional(),
+    name: z
+      .string()
+      .min(2, 'Gym name must be at least 2 characters')
+      .max(100, 'Gym name cannot exceed 100 characters')
+      .optional(),
     contactPhone: z
       .string()
-      .min(8)
-      .max(20)
-      .regex(/^[0-9+\-() ]+$/, 'Phone number contains invalid characters')
+      .min(8, 'Phone number must be at least 8 digits')
+      .max(20, 'Phone number cannot exceed 20 digits')
+      .regex(/^[0-9+\-() ]+$/, 'Invalid phone number format')
       .optional(),
-    contactEmail: z.string().email().optional(),
-    address: z.string().min(5).max(255).optional(),
-    city: z.string().min(2).max(100).optional(),
-    state: z.string().min(2).max(100).optional(),
-    country: z.string().min(2).max(100).optional(),
-    timezone: z.string().min(2).max(100).optional(),
+    contactEmail: z.string().email('Invalid email format').optional(),
+    address: z
+      .string()
+      .min(5, 'Address must be at least 5 characters')
+      .max(255, 'Address is too long')
+      .optional(),
+    city: z
+      .string()
+      .min(2, 'City must be at least 2 characters')
+      .max(100, 'City name is too long')
+      .optional(),
+    state: z
+      .string()
+      .min(2, 'State must be at least 2 characters')
+      .max(100, 'State name is too long')
+      .optional(),
+    country: z
+      .string()
+      .min(2, 'Country must be at least 2 characters')
+      .max(100, 'Country name is too long')
+      .optional(),
+    timezone: z.string().min(2, 'Timezone is invalid').max(100).optional(),
     isActive: z.boolean().optional(),
   }),
 });
 
 export const InviteUserSchema = z.object({
   body: z.object({
-    email: z.string().email(),
-    firstName: z.string().min(2),
-    lastName: z.string().min(2),
-    role: z.enum(['ADMIN', 'STAFF']),
+    email: z
+      .string({ error: 'Email is required' })
+      .min(1, 'Email is required')
+      .email('Invalid email format'),
+    firstName: z
+      .string({ error: 'First name is required' })
+      .min(2, 'First name must be at least 2 characters'),
+    lastName: z
+      .string({ error: 'Last name is required' })
+      .min(2, 'Last name must be at least 2 characters'),
+    role: z.enum(['ADMIN', 'STAFF'], {
+      error: 'Role must be ADMIN or STAFF',
+    }),
   }),
 });
 
 export const directCreateUserSchema = z.object({
   body: z
     .object({
-      email: z.string().email(),
-      firstName: z.string().min(2),
-      lastName: z.string().min(1),
-      role: z.enum(['ADMIN', 'STAFF', 'TRAINER']),
+      email: z
+        .string({ error: 'Email is required' })
+        .min(1, 'Email is required')
+        .email('Invalid email format'),
+      firstName: z
+        .string({ error: 'First name is required' })
+        .min(2, 'First name must be at least 2 characters'),
+      lastName: z
+        .string({ error: 'Last name is required' })
+        .min(1, 'Last name is required'),
+      role: z.enum(['ADMIN', 'STAFF', 'TRAINER'], {
+        error: 'Role must be ADMIN, STAFF, or TRAINER',
+      }),
       password: passwordSchema,
-      specialization: z.string().min(3).max(200).optional(),
-      bio: z.string().max(500).optional(),
+      specialization: z
+        .string()
+        .min(3, 'Specialization must be at least 3 characters')
+        .max(200, 'Specialization is too long')
+        .optional(),
+      bio: z.string().max(500, 'Bio cannot exceed 500 characters').optional(),
     })
     .superRefine((data, ctx) => {
       if (
@@ -67,26 +109,30 @@ export const directCreateUserSchema = z.object({
 
 export const AcceptInviteSchema = z.object({
   body: z.object({
-    token: z.string().min(10),
+    token: z.string().min(10, 'Invite token is invalid'),
     password: passwordSchema,
   }),
 });
 
 export const InvitePreviewQuerySchema = z.object({
   query: z.object({
-    token: z.string().min(10),
+    token: z.string().min(10, 'Invite token is invalid'),
   }),
 });
 
 export const InviteIdParamSchema = z.object({
   params: z.object({
-    id: z.string().uuid(),
+    id: z.string().uuid('Invalid invite ID'),
   }),
 });
 
 export const upgradePlanSchema = z.object({
   body: z.object({
-    planName: z.enum(['BASIC', 'PRO']),
-    interval: z.enum(['MONTHLY', 'YEARLY']),
+    planName: z.enum(['BASIC', 'PRO'], {
+      error: 'Plan name must be BASIC or PRO',
+    }),
+    interval: z.enum(['MONTHLY', 'YEARLY'], {
+      error: 'Billing interval must be MONTHLY or YEARLY',
+    }),
   }),
 });

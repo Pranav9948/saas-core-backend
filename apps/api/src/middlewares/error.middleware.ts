@@ -4,6 +4,10 @@ import { FeatureLimitReachedException } from '../exceptions/feature-limit.except
 import { ZodError } from 'zod';
 import { Prisma } from '@/generated/prisma/client.js';
 import { logger } from '@/core/logger.js';
+import {
+  prismaUniqueConstraintMessage,
+  zodErrorToFieldErrors,
+} from '@/core/validation-errors.js';
 
 export const errorMiddleware = (
   error: any,
@@ -52,8 +56,9 @@ export const errorMiddleware = (
     if (error instanceof FeatureLimitReachedException) {
       return res.status(statusCode).json({
         success: false,
-        code: error.code,
         message,
+        errors: null,
+        code: error.code,
         feature: error.feature,
         currentPlan: error.currentPlan,
         limit: error.limit,
@@ -64,18 +69,19 @@ export const errorMiddleware = (
     return res.status(statusCode).json({
       success: false,
       message,
-      errorCode,
       errors,
+      errorCode,
     });
   }
 
   // 2. Handle Zod Validation Errors (Input Validation)
 
   if (error instanceof ZodError) {
-    statusCode = 422;
-    message = 'Validation Error';
+    const fieldErrors = zodErrorToFieldErrors(error);
+    statusCode = 400;
+    message = fieldErrors[0]?.message ?? 'Validation failed';
     errorCode = ErrorCode.VALIDATION_FAILED;
-    errors = error.flatten().fieldErrors;
+    errors = fieldErrors;
 
     logger.warn({
       msg: 'Validation error',
@@ -90,8 +96,8 @@ export const errorMiddleware = (
     return res.status(statusCode).json({
       success: false,
       message,
-      errorCode,
       errors,
+      errorCode,
     });
   }
 
@@ -100,8 +106,13 @@ export const errorMiddleware = (
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === 'P2002') {
       statusCode = 409;
-      message = `Unique constraint failed on ${error.meta?.target}`;
-      errorCode = ErrorCode.EMAIL_ALREADY_EXISTS;
+      message = prismaUniqueConstraintMessage(error.meta?.target);
+      const fields = Array.isArray(error.meta?.target)
+        ? error.meta.target.map(String)
+        : [];
+      errorCode = fields.includes('email')
+        ? ErrorCode.EMAIL_ALREADY_EXISTS
+        : ErrorCode.RESOURCE_ALREADY_EXISTS;
 
       logger.warn({
         msg: 'Database constraint error',
@@ -115,6 +126,7 @@ export const errorMiddleware = (
       return res.status(statusCode).json({
         success: false,
         message,
+        errors: null,
         errorCode,
       });
     }
@@ -134,6 +146,7 @@ export const errorMiddleware = (
   return res.status(500).json({
     success: false,
     message: 'An internal server error occurred',
+    errors: null,
     errorCode: ErrorCode.INTERNAL_EXCEPTION,
     ...(process.env.NODE_ENV === 'development' && { stack: error.stack }),
   });

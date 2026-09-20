@@ -3,6 +3,7 @@ export enum ErrorCode {
   UNAUTHORIZED = 1001, // Invalid or missing auth
   TOKEN_EXPIRED = 1002,
   INVALID_TOKEN = 1003,
+  INVALID_CREDENTIALS = 1004,
 
   //  Validation Errors (2xxx)
   VALIDATION_FAILED = 2001,
@@ -25,12 +26,17 @@ export enum ErrorCode {
   SERVICE_UNAVAILABLE = 5003,
 }
 
+export type HttpFieldError = {
+  field: string;
+  message: string;
+};
+
 export class HttpException extends Error {
   constructor(
     public message: string,
     public statusCode: number,
     public errorCode: ErrorCode,
-    public errors: any = null,
+    public errors: HttpFieldError[] | null = null,
   ) {
     super(message);
     // This captures the line number where the error happened for  logs

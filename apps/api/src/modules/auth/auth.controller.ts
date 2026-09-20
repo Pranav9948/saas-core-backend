@@ -1,14 +1,14 @@
-import { NextFunction, Request, Response } from 'express';
-import { authService } from './auth.service.js';
-import { prisma } from '@/infra/db.js';
+import { clearAuthCookies, setAuthCookies } from "@/core/auth-cookies.js";
+import { logger } from "@/core/logger.js";
 import {
   NotFoundException,
   UnauthorizedException,
-} from '@/exceptions/exceptions.js';
-import { ErrorCode } from '@/exceptions/root.js';
-import { getTenantPrisma } from '@/infra/tenant-prisma.js';
-import { logger } from '@/core/logger.js';
-import { clearAuthCookies, setAuthCookies } from '@/core/auth-cookies.js';
+} from "@/exceptions/exceptions.js";
+import { ErrorCode } from "@/exceptions/root.js";
+import { prisma } from "@/infra/db.js";
+import { getTenantPrisma } from "@/infra/tenant-prisma.js";
+import { NextFunction, Request, Response } from "express";
+import { authService } from "./auth.service.js";
 
 export const registerGym = async (
   req: Request,
@@ -25,7 +25,7 @@ export const registerGym = async (
 
     res.status(201).json({
       success: true,
-      message: 'Gym registered successfully',
+      message: "Gym registered successfully",
       data: {
         user: result.user,
         accessToken: result.accessToken,
@@ -81,7 +81,7 @@ export const logout = async (
 
     clearAuthCookies(res);
 
-    res.status(200).json({ success: true, message: 'Logged out successfully' });
+    res.status(200).json({ success: true, message: "Logged out successfully" });
   } catch (error) {
     next(error);
   }
@@ -110,7 +110,7 @@ export const getMe = async (
     });
 
     if (!user) {
-      throw new NotFoundException('User not found', ErrorCode.USER_NOT_FOUND);
+      throw new NotFoundException("User not found", ErrorCode.USER_NOT_FOUND);
     }
 
     res.status(200).json({ success: true, data: user });
@@ -126,7 +126,12 @@ export const rotateRefreshToken = async (
 ) => {
   try {
     const oldToken = req.cookies.refreshToken;
-    if (!oldToken) throw new UnauthorizedException('No refresh token');
+    if (!oldToken) {
+      throw new UnauthorizedException(
+        "Refresh token is missing or expired",
+        ErrorCode.TOKEN_EXPIRED,
+      );
+    }
 
     logger.info(`oldToken ${oldToken}`);
 
@@ -135,7 +140,7 @@ export const rotateRefreshToken = async (
 
     setAuthCookies(res, { accessToken, refreshToken });
 
-    res.set('Cache-Control', 'no-store');
+    res.set("Cache-Control", "no-store");
 
     res.status(200).json({
       success: true,
@@ -158,7 +163,7 @@ export const forgotPassword = async (
     res.status(200).json({
       success: true,
       message:
-        'If an account exists with that email, a reset link has been sent.',
+        "If an account exists with that email, a reset link has been sent.",
     });
   } catch (error) {
     next(error);
@@ -177,7 +182,7 @@ export const resetPassword = async (
     res.status(200).json({
       success: true,
       message:
-        'Password reset successful. You can now log in with your new password.',
+        "Password reset successful. You can now log in with your new password.",
     });
   } catch (error) {
     next(error);

@@ -1,5 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
-import { ForbiddenException } from '@/exceptions/exceptions.js';
+import {
+  AUTH_TOKEN_MESSAGE,
+  FORBIDDEN_ACTION_MESSAGE,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@/exceptions/exceptions.js';
 import { rbacService } from './rbac.service.js';
 
 type TenantParams = { tenantId: string };
@@ -92,11 +97,11 @@ export const assertTenantAccess = (
 ) => {
   try {
     if (!req.user) {
-      throw new ForbiddenException('Unauthenticated');
+      throw new UnauthorizedException(AUTH_TOKEN_MESSAGE);
     }
 
     if (req.params.tenantId !== req.user.tenantId) {
-      throw new ForbiddenException('Cannot access another tenant');
+      throw new ForbiddenException(FORBIDDEN_ACTION_MESSAGE);
     }
 
     next();

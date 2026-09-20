@@ -45,7 +45,7 @@ export async function resolveRoleIdForUser({
 
   if (!roleRecord) {
     throw new ForbiddenException(
-      'RBAC roles are not configured for this gym. Run database seed or contact support.',
+      'This gym’s roles are not configured. Contact support.',
     );
   }
 

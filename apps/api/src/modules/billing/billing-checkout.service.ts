@@ -88,8 +88,7 @@ export class BillingCheckoutService {
     const plan = await this.billingRepo.getPlanById(planId);
 
     if (!plan) {
-      logBillingTraceError('checkout.invalid_plan', { tenantId, planId });
-      throw new BadRequestException('Invalid plan');
+      throw new NotFoundException('Plan not found', ErrorCode.NOT_FOUND);
     }
 
     if (!isPaidCheckoutPlan(plan)) {

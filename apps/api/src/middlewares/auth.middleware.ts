@@ -1,6 +1,10 @@
 import { readAccessTokenFromRequest } from '@/core/auth-cookies.js';
 import { Security } from '@/core/security.js';
-import { UnauthorizedException } from '@/exceptions/exceptions.js';
+import {
+  AUTH_TOKEN_MESSAGE,
+  UnauthorizedException,
+} from '@/exceptions/exceptions.js';
+import { ErrorCode } from '@/exceptions/root.js';
 import { Request, Response, NextFunction } from 'express';
 
 export const authenticate = (
@@ -10,18 +14,32 @@ export const authenticate = (
 ): void => {
   const token = readAccessTokenFromRequest(req);
   if (!token) {
-    throw new UnauthorizedException('No token provided');
+    next(
+      new UnauthorizedException(AUTH_TOKEN_MESSAGE, ErrorCode.UNAUTHORIZED),
+    );
+    return;
   }
 
   try {
     const decoded = Security.verifyAccessToken(token);
     if (!decoded.tenantId) {
-      throw new UnauthorizedException('Invalid token: Tenant context missing');
+      next(
+        new UnauthorizedException(
+          AUTH_TOKEN_MESSAGE,
+          ErrorCode.INVALID_TOKEN,
+        ),
+      );
+      return;
     }
 
     req.user = decoded;
     next();
   } catch (err) {
-    next(new UnauthorizedException('Invalid or expired access token'));
+    if (err instanceof UnauthorizedException) {
+      next(err);
+      return;
+    }
+
+    next(new UnauthorizedException(AUTH_TOKEN_MESSAGE, ErrorCode.INVALID_TOKEN));
   }
 };

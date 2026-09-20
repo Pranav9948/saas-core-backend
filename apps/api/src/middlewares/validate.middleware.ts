@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodObject, ZodError } from 'zod';
 import { BadRequestException } from '@/exceptions/exceptions.js';
+import { ErrorCode } from '@/exceptions/root.js';
+import { zodErrorToFieldErrors } from '@/core/validation-errors.js';
 
 export const validate =
   (schema: ZodObject) =>
@@ -15,11 +17,12 @@ export const validate =
       return next();
     } catch (error) {
       if (error instanceof ZodError) {
+        const fieldErrors = zodErrorToFieldErrors(error);
         return next(
           new BadRequestException(
-            error.issues
-              .map((e) => `${e.path.join('.')}: ${e.message}`)
-              .join(', '),
+            fieldErrors[0]?.message ?? 'Validation failed',
+            ErrorCode.VALIDATION_FAILED,
+            fieldErrors,
           ),
         );
       }

@@ -4,15 +4,19 @@ import {
   setCachedPermissions,
 } from '@/modules/rbac/permission.cache.js';
 import { resolveRoleIdForUser } from '@/modules/rbac/resolve-role-id.js';
-import { ForbiddenException } from '@/exceptions/exceptions.js';
+import {
+  AUTH_TOKEN_MESSAGE,
+  FORBIDDEN_ACTION_MESSAGE,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@/exceptions/exceptions.js';
 import { prisma } from '@/infra/db.js';
-import { logger } from '@/core/logger.js';
 
 export const authorizePermissions = (...required: string[]) => {
   return async (req: Request, _res: Response, next: NextFunction) => {
     try {
       if (!req.user) {
-        throw new ForbiddenException('Unauthenticated');
+        throw new UnauthorizedException(AUTH_TOKEN_MESSAGE);
       }
 
       const roleId = await resolveRoleIdForUser({
@@ -37,7 +41,7 @@ export const authorizePermissions = (...required: string[]) => {
         });
 
         if (!role) {
-          throw new ForbiddenException('Role not found');
+          throw new ForbiddenException(FORBIDDEN_ACTION_MESSAGE);
         }
 
         permissions = role.permissions.map((rp) => rp.permission.name);
@@ -47,9 +51,7 @@ export const authorizePermissions = (...required: string[]) => {
       const hasAccess = required.every((perm) => permissions!.includes(perm));
 
       if (!hasAccess) {
-        throw new ForbiddenException(
-          `Missing permissions: ${required.join(', ')}`,
-        );
+        throw new ForbiddenException(FORBIDDEN_ACTION_MESSAGE);
       }
 
       next();

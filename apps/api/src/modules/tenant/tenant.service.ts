@@ -2,6 +2,7 @@ import slugifyPkg from 'slugify';
 import { TenantRepository } from './tenant.repository.js';
 import {
   BadRequestException,
+  ConflictException,
   NotFoundException,
 } from '@/exceptions/exceptions.js';
 import { ErrorCode } from '@/exceptions/root.js';
@@ -85,7 +86,7 @@ export class TenantService {
     const invite = await this.tenantRepo.findInviteByToken(token);
 
     if (!invite) {
-      throw new NotFoundException('Invalid invite link', ErrorCode.NOT_FOUND);
+      throw new NotFoundException('Invite not found', ErrorCode.NOT_FOUND);
     }
 
     const tenant = await this.tenantRepo.findById(invite.tenantId);
@@ -156,7 +157,10 @@ export class TenantService {
     // Check duplicate in same tenant
     const exists = await this.tenantRepo.userExistsInTenant(email, tenantId);
     if (exists) {
-      throw new BadRequestException('User already exists in this tenant');
+      throw new ConflictException(
+        'A team member with this email already exists in this gym',
+        ErrorCode.EMAIL_ALREADY_EXISTS,
+      );
     }
 
     const token = crypto.randomBytes(32).toString('hex');
@@ -196,13 +200,17 @@ export class TenantService {
 
     const exists = await this.tenantRepo.userExistsInTenant(email, tenantId);
     if (exists) {
-      throw new BadRequestException('User already exists in this tenant');
+      throw new ConflictException(
+        'A team member with this email already exists in this gym',
+        ErrorCode.EMAIL_ALREADY_EXISTS,
+      );
     }
 
     const existingGlobal = await this.tenantRepo.findUserByEmail(email);
     if (existingGlobal) {
-      throw new BadRequestException(
+      throw new ConflictException(
         'An account with this email already exists. Send an invite instead.',
+        ErrorCode.EMAIL_ALREADY_EXISTS,
       );
     }
 
@@ -293,7 +301,10 @@ export class TenantService {
     );
 
     if (exists) {
-      throw new BadRequestException('User already part of this tenant');
+      throw new ConflictException(
+        'This user is already part of this gym',
+        ErrorCode.EMAIL_ALREADY_EXISTS,
+      );
     }
 
     if (invite.role === 'TRAINER') {

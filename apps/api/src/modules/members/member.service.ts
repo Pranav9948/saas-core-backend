@@ -36,7 +36,7 @@ export class MemberService {
 
     if (existing)
       throw new ConflictException(
-        'Member email already exists',
+        'A member with this email already exists',
         ErrorCode.EMAIL_ALREADY_EXISTS,
       );
 
@@ -44,11 +44,13 @@ export class MemberService {
       await this.billingRepo.getSubscriptionWithPlan(tenantId);
 
     if (!subscription) {
-      throw new Error('Subscription not found');
+      throw new NotFoundException('Subscription not found', ErrorCode.NOT_FOUND);
     }
 
     if (subscription.status !== 'ACTIVE') {
-      throw new Error('Subscription inactive');
+      throw new BadRequestException(
+        'This gym does not have an active subscription',
+      );
     }
 
     if (data.assignedTrainerId) {
@@ -99,7 +101,7 @@ export class MemberService {
     const member = await this.memberRepo.findById(id, tenantId);
     if (!member)
       throw new NotFoundException(
-        'member profile not found',
+        'Member not found',
         ErrorCode.NOT_FOUND,
       );
     return member;
