@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { superAdminService } from './super-admin.services.js';
 import { UnauthorizedException } from '@/exceptions/exceptions.js';
 import { logger } from '@/core/logger.js';
+import { clearAuthCookies, setAuthCookies } from '@/core/auth-cookies.js';
 
 type PlanParams = {
   id: string;
@@ -52,13 +53,7 @@ class SuperAdminAuthController {
       const { superAdmin, accessToken, refreshToken } =
         await superAdminService.login(email, password);
 
-      res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-        path: '/',
-      });
+      setAuthCookies(res, { accessToken, refreshToken });
 
       res.status(200).json({
         success: true,
@@ -86,13 +81,7 @@ class SuperAdminAuthController {
       const { accessToken, refreshToken } =
         await superAdminService.rotateRefreshToken(oldToken);
 
-      res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-        path: '/',
-      });
+      setAuthCookies(res, { accessToken, refreshToken });
 
       res.set('Cache-Control', 'no-store');
 
@@ -115,16 +104,24 @@ class SuperAdminAuthController {
         await superAdminService.logout(refreshToken);
       }
 
-      res.clearCookie('refreshToken', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        path: '/',
-      });
+      clearAuthCookies(res);
 
       res.status(200).json({
         success: true,
         message: 'Logged out successfully',
+      });
+      return;
+    } catch (error) {
+      next(error);
+      return;
+    }
+  }
+
+  async getMe(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      res.status(200).json({
+        success: true,
+        data: req.superAdmin,
       });
       return;
     } catch (error) {

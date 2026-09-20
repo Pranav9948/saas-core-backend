@@ -24,6 +24,34 @@ process.on('uncaughtException', (error) => {
 const start = async () => {
   try {
     await connectDB();
+  } catch (error) {
+    logger.error(error, '❌ Failed to start server');
+    process.exit(1);
+  }
+
+  const server: Server = app.listen(config.PORT, '0.0.0.0', () => {
+    logger.info(`🚀 Server running on http://0.0.0.0:${config.PORT}`);
+  });
+
+  registerGracefulShutdown({
+    serviceName: 'api',
+    logger,
+    handlers: [
+      async () => {
+        await new Promise<void>((resolve, reject) => {
+          server.close((err) => (err ? reject(err) : resolve()));
+        });
+      },
+      async () => {
+        redis.disconnect();
+      },
+      async () => {
+        await disConnectDB();
+      },
+    ],
+  });
+
+  try {
     await seedPermissions();
     await seedRolesForAllTenants();
     await syncOwnerRolePermissions();
@@ -32,31 +60,11 @@ const start = async () => {
       { service: 'api', env: config.NODE_ENV },
       `Service started in ${config.NODE_ENV} mode`,
     );
-
-    const server: Server = app.listen(config.PORT, '0.0.0.0', () => {
-      logger.info(`🚀 Server running on http://0.0.0.0:${config.PORT}`);
-    });
-
-    registerGracefulShutdown({
-      serviceName: 'api',
-      logger,
-      handlers: [
-        async () => {
-          await new Promise<void>((resolve, reject) => {
-            server.close((err) => (err ? reject(err) : resolve()));
-          });
-        },
-        async () => {
-          redis.disconnect();
-        },
-        async () => {
-          await disConnectDB();
-        },
-      ],
-    });
   } catch (error) {
-    logger.error(error, '❌ Failed to start server');
-    process.exit(1);
+    logger.error(
+      error,
+      '❌ Startup seeding failed; /health is up but the API is degraded',
+    );
   }
 };
 

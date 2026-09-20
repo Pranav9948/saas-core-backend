@@ -8,6 +8,7 @@ import { ErrorCode } from '@/exceptions/root.js';
 import { TenantRepository } from '@/modules/tenant/tenant.repository.js';
 import { logger } from '@/core/logger.js';
 import { authService } from '../auth/auth.service.js';
+import { setAuthCookies } from '@/core/auth-cookies.js';
 
 const tenantRepo = new TenantRepository();
 const tenantService = new TenantService(tenantRepo);
@@ -222,12 +223,9 @@ export const acceptInvite = async (
       result.tenantId,
     );
 
-    res.cookie('refreshToken', session.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/',
+    setAuthCookies(res, {
+      accessToken: session.accessToken,
+      refreshToken: session.refreshToken,
     });
 
     res.status(200).json({

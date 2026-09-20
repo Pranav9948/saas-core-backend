@@ -2,8 +2,9 @@ FROM node:20-alpine AS base
 
 WORKDIR /app
 
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10.28.2
 
+COPY .npmrc ./
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/notification-service/package.json ./apps/notification-service/
 COPY packages/core/package.json ./packages/core/
