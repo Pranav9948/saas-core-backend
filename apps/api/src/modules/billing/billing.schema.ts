@@ -1,9 +1,14 @@
 import { z } from 'zod';
 
 export const CreateCheckoutSessionSchema = z.object({
-  body: z.object({
-    planId: z.string().uuid('Invalid plan ID'),
-  }),
+  body: z
+    .object({
+      planId: z.string().uuid('Invalid plan ID').optional(),
+      priceId: z.string().min(1, 'priceId is required').optional(),
+    })
+    .refine((data) => Boolean(data.planId || data.priceId), {
+      message: 'planId or priceId is required',
+    }),
 });
 
 export const PaymentHistoryQuerySchema = z.object({

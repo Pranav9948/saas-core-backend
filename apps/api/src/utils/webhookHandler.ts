@@ -1,4 +1,5 @@
 import { stripe } from '@/modules/billing/stripe.service.js';
+import { BillingService } from '@/modules/billing/billing.service.js';
 import { Request, Response } from 'express';
 import Stripe from 'stripe';
 import { config } from '@/core/config.js';
@@ -8,6 +9,8 @@ import {
   logBillingTrace,
   logBillingTraceError,
 } from '@/modules/billing/billing-trace.js';
+
+const billingService = new BillingService();
 
 export const webhookHandler = async (
   req: Request,
@@ -39,7 +42,7 @@ export const webhookHandler = async (
     logBillingTrace('webhook.received', {
       eventId: event.id,
       eventType: event.type,
-      route: 'POST /webhooks/stripe',
+      route: req.originalUrl,
     });
   } catch (err: unknown) {
     logger.error({
@@ -51,32 +54,42 @@ export const webhookHandler = async (
   }
 
   try {
-    await enqueueStripeEvent(event);
+    await billingService.handleEvent(event);
 
-    logger.info({
-      msg: 'Stripe webhook enqueued',
+    logBillingTrace('webhook.processed', {
       eventId: event.id,
       eventType: event.type,
     });
-
-    logBillingTrace('webhook.enqueued', {
-      eventId: event.id,
-      eventType: event.type,
-    });
-
-    res.status(200).json({ received: true });
   } catch (err: unknown) {
-    logBillingTraceError('webhook.enqueue_failed', {
+    logBillingTraceError('webhook.process_failed', {
       eventId: event.id,
       eventType: event.type,
       err: err instanceof Error ? err.message : String(err),
     });
     logger.error({
-      msg: 'Stripe webhook enqueue failed',
+      msg: 'Stripe webhook processing failed',
       eventId: event.id,
       eventType: event.type,
       err: err instanceof Error ? err.message : String(err),
     });
     res.status(500).send('Webhook handler failed');
+    return;
   }
+
+  try {
+    await enqueueStripeEvent(event);
+    logBillingTrace('webhook.enqueued', {
+      eventId: event.id,
+      eventType: event.type,
+    });
+  } catch (err: unknown) {
+    logger.warn({
+      msg: 'Stripe webhook enqueue skipped — processed inline',
+      eventId: event.id,
+      eventType: event.type,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  res.status(200).json({ received: true });
 };
