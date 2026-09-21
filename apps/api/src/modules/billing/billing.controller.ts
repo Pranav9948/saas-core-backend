@@ -1,10 +1,4 @@
-import {
-  Router,
-  type Router as ExpressRouter,
-  Request,
-  Response,
-  NextFunction,
-} from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { BillingService } from './billing.service.js';
 import { prisma } from '@/infra/db.js';
 import { logger } from '@/core/logger.js';
@@ -21,20 +15,23 @@ export const createCheckoutSession = async (
   try {
     const tenantId = req.user!.tenantId;
     const userId = req.user!.userId;
-    const { planId } = req.body;
+    const { planId, priceId } = req.body as {
+      planId?: string;
+      priceId?: string;
+    };
 
     logBillingTrace('checkout.request', {
       tenantId,
       userId,
       planId,
+      priceId,
       route: 'POST /billing/checkout-session',
     });
 
-    const url = await billingService.createCheckoutSession(
-      tenantId,
-      userId,
+    const url = await billingService.createCheckoutSession(tenantId, userId, {
       planId,
-    );
+      priceId,
+    });
 
     logBillingTrace('checkout.response', {
       tenantId,
@@ -54,6 +51,7 @@ export const createCheckoutSession = async (
         tenantId: req.user?.tenantId,
         userId: req.user?.userId,
         planId: req.body?.planId,
+        priceId: req.body?.priceId,
         status: error.statusCode,
         errorCode: error.errorCode,
         message: error.message,

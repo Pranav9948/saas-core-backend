@@ -15,20 +15,21 @@ const passwordSchema = z
 export const superAdminCreationSchema = z.object({
   body: z.object({
     firstName: z
-      .string({ error: 'first Name of admin is required' })
+      .string({ error: 'First name is required' })
       .trim()
       .min(2, 'First name must be at least 2 characters')
       .max(50, 'First name cannot exceed 50 characters'),
 
     lastName: z
-      .string({ error: 'last Name of admin is required' })
+      .string({ error: 'Last name is required' })
       .trim()
       .min(2, 'Last name must be at least 2 characters')
       .max(50, 'Last name cannot exceed 50 characters'),
 
     email: z
-      .string({ error: 'email is required' })
+      .string({ error: 'Email is required' })
       .trim()
+      .min(1, 'Email is required')
       .email('Invalid email format')
       .toLowerCase(),
 
@@ -38,17 +39,28 @@ export const superAdminCreationSchema = z.object({
 
 export const superAdminLoginSchema = z.object({
   body: z.object({
-    email: z.string().email('Invalid email format'),
+    email: z
+      .string({ error: 'Email is required' })
+      .min(1, 'Email is required')
+      .email('Invalid email format'),
     password: z.string().min(1, 'Password is required'),
   }),
 });
 
 export const CreatePlanSchema = z.object({
   body: z.object({
-    name: z.enum(['FREE', 'BASIC', 'PRO']),
-    price: z.number().min(0),
-    currency: z.string(),
-    interval: z.enum(['MONTHLY', 'YEARLY']),
+    name: z.enum(['FREE', 'BASIC', 'PRO'], {
+      error: 'Plan name must be FREE, BASIC, or PRO',
+    }),
+    price: z
+      .number({ error: 'Price is required' })
+      .min(0, 'Price cannot be negative'),
+    currency: z
+      .string({ error: 'Currency is required' })
+      .min(1, 'Currency is required'),
+    interval: z.enum(['MONTHLY', 'YEARLY'], {
+      error: 'Billing interval must be MONTHLY or YEARLY',
+    }),
     stripePriceId: z.string().optional(),
     features: z.record(z.string(), z.any()),
   }),
@@ -57,10 +69,14 @@ export const CreatePlanSchema = z.object({
 export const UpdatePlanSchema = z.object({
   body: z
     .object({
-      name: z.enum(['FREE', 'BASIC', 'PRO']),
-      price: z.number().min(0),
-      currency: z.string(),
-      interval: z.enum(['MONTHLY', 'YEARLY']),
+      name: z.enum(['FREE', 'BASIC', 'PRO'], {
+        error: 'Plan name must be FREE, BASIC, or PRO',
+      }),
+      price: z.number().min(0, 'Price cannot be negative'),
+      currency: z.string().min(1, 'Currency is required'),
+      interval: z.enum(['MONTHLY', 'YEARLY'], {
+        error: 'Billing interval must be MONTHLY or YEARLY',
+      }),
       stripePriceId: z.string().optional(),
       features: z.record(z.string(), z.any()),
     })
@@ -69,6 +85,6 @@ export const UpdatePlanSchema = z.object({
 
 export const PlanIdSchema = z.object({
   params: z.object({
-    id: z.string().uuid(),
+    id: z.string().uuid('Invalid plan ID'),
   }),
 });

@@ -4,7 +4,7 @@ import { UserRepository } from './auth.repository.js';
 import {
   BadRequestException,
   ConflictException,
-  InternalException,
+  INVALID_CREDENTIALS_MESSAGE,
   NotFoundException,
   UnauthorizedException,
 } from '@/exceptions/exceptions.js';
@@ -35,7 +35,7 @@ export class AuthService {
     const existing = await this.userRepo.findByEmail(data.email, tenantId);
     if (existing) {
       throw new ConflictException(
-        'User already exists',
+        'An account with this email already exists',
         ErrorCode.EMAIL_ALREADY_EXISTS,
       );
     }
@@ -55,25 +55,42 @@ export class AuthService {
   async login(data: any) {
     const user = await this.userRepo.findByEmailGlobal(data.email);
 
-    if (!user) throw new NotFoundException('Invalid email or password', 3002);
-    if (!user.isActive) {
-      throw new UnauthorizedException('Account disabled');
+    if (!user) {
+      throw new UnauthorizedException(
+        INVALID_CREDENTIALS_MESSAGE,
+        ErrorCode.INVALID_CREDENTIALS,
+      );
     }
-
-    const tenantUser = await this.tenantRepo.findTenantByUserId(user.id);
-
-    if (!tenantUser) {
-      throw new UnauthorizedException('User not associated with any gym');
-    }
-
-    const tenant = await tenantRepo.findById(tenantUser?.tenantId);
 
     const isValid = await this.security.comparePassword(
       data.password,
       user.passwordHash,
     );
 
-    if (!isValid) throw new UnauthorizedException('Invalid email or password');
+    if (!isValid || !user.isActive) {
+      throw new UnauthorizedException(
+        INVALID_CREDENTIALS_MESSAGE,
+        ErrorCode.INVALID_CREDENTIALS,
+      );
+    }
+
+    const tenantUser = await this.tenantRepo.findTenantByUserId(user.id);
+
+    if (!tenantUser) {
+      throw new UnauthorizedException(
+        INVALID_CREDENTIALS_MESSAGE,
+        ErrorCode.INVALID_CREDENTIALS,
+      );
+    }
+
+    const tenant = await this.tenantRepo.findById(tenantUser.tenantId);
+
+    if (!tenant) {
+      throw new UnauthorizedException(
+        INVALID_CREDENTIALS_MESSAGE,
+        ErrorCode.INVALID_CREDENTIALS,
+      );
+    }
 
     await eventBus.emit(EVENTS.USER_LOGGED_IN, {
       email: user.email,
@@ -112,7 +129,7 @@ export class AuthService {
     await this.userRepo.deleteRefreshToken(hashed, tenantId);
 
     const user = await this.userRepo.findById(payload.userId);
-    if (!user) throw new UnauthorizedException('User not found');
+    if (!user) throw new UnauthorizedException('Invalid refresh token');
 
     return this.generateAuthResponse(user, tenantId);
   }
@@ -165,7 +182,7 @@ export class AuthService {
 
     if (existing) {
       throw new ConflictException(
-        'Email already registered',
+        'An account with this email already exists',
         ErrorCode.EMAIL_ALREADY_EXISTS,
       );
     }
@@ -249,7 +266,7 @@ export class AuthService {
       tenantId,
     );
 
-    return { user, accessToken, refreshToken };
+    return { user: { ...user, role: tenantUser.role }, accessToken, refreshToken };
   }
 
   async createSessionForUser(userId: string, tenantId: string) {

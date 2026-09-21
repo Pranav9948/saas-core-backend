@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { readAccessTokenFromRequest } from '@/core/auth-cookies.js';
 import { SuperAdminSecurity } from '@/core/super-admin.security.js';
 import {
+  AUTH_TOKEN_MESSAGE,
+  FORBIDDEN_ACTION_MESSAGE,
   UnauthorizedException,
   ForbiddenException,
 } from '@/exceptions/exceptions.js';
@@ -27,7 +29,7 @@ export const authenticateSuperAdmin = async (
   try {
     const token = readAccessTokenFromRequest(req);
     if (!token) {
-      throw new UnauthorizedException('No token provided');
+      throw new UnauthorizedException(AUTH_TOKEN_MESSAGE);
     }
 
     try {
@@ -42,7 +44,7 @@ export const authenticateSuperAdmin = async (
       req.superAdmin = decoded;
       next();
     } catch (err) {
-      throw new UnauthorizedException('Invalid or expired access token');
+        throw new UnauthorizedException(AUTH_TOKEN_MESSAGE);
     }
   } catch (error) {
     next(error);
@@ -55,7 +57,7 @@ export const requireSuperAdmin = (
   next: NextFunction,
 ) => {
   if (!req.superAdmin || req.superAdmin.role !== 'SUPER_ADMIN') {
-    throw new ForbiddenException('Access denied. Super admin only.');
+    throw new ForbiddenException(FORBIDDEN_ACTION_MESSAGE);
   }
   next();
 };

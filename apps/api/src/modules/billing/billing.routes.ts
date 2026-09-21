@@ -11,21 +11,28 @@ import { validate } from '@/middlewares/validate.middleware.js';
 import { authorizePermissions } from '@/middlewares/permission.middleware.js';
 import { PERMISSIONS } from '../rbac/permissions.constants.js';
 import { CreateCheckoutSessionSchema, PaymentHistoryQuerySchema } from './billing.schema.js';
+import { requireOwner } from './require-owner.middleware.js';
 
 const router: ExpressRouter = Router();
 
-router.post(
-  '/checkout-session',
+const checkoutHandlers = [
   authenticate,
+  requireOwner,
   validate(CreateCheckoutSessionSchema),
   billingController.createCheckoutSession,
-);
+] as const;
 
-router.post(
-  '/customer-portal',
+const portalHandlers = [
   authenticate,
+  requireOwner,
   billingController.createCustomerPortalSession,
-);
+] as const;
+
+router.post('/checkout-session', ...checkoutHandlers);
+router.post('/create-checkout-session', ...checkoutHandlers);
+
+router.post('/customer-portal', ...portalHandlers);
+router.post('/create-portal-session', ...portalHandlers);
 
 router.get('/plans', authenticate, billingController.getBillingPlans);
 

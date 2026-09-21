@@ -1,16 +1,12 @@
-import { BillingRepository } from './../billing/billing.repository.js';
-import { Prisma } from '@/generated/prisma/client.js';
-import { prisma } from '../../infra/db.js';
-import { getTenantPrisma } from '@/infra/tenant-prisma.js';
-import { logger } from '@/core/logger.js';
-import { eventBus } from '../events/event-bus.js';
-import { EVENTS } from '../events/events.js';
-import {
-  InternalException,
-  NotFoundException,
-} from '@/exceptions/exceptions.js';
-import { ErrorCode } from '@/exceptions/root.js';
-import { stripe } from '../billing/stripe.service.js';
+import { logger } from "@/core/logger.js";
+import { NotFoundException } from "@/exceptions/exceptions.js";
+import { ErrorCode } from "@/exceptions/root.js";
+import { Prisma } from "@/generated/prisma/client.js";
+import { prisma } from "../../infra/db.js";
+import { stripe } from "../billing/stripe.service.js";
+import { eventBus } from "../events/event-bus.js";
+import { EVENTS } from "../events/events.js";
+import { BillingRepository } from "./../billing/billing.repository.js";
 
 export class TenantRepository {
   private getClient(tx?: Prisma.TransactionClient) {
@@ -31,7 +27,7 @@ export class TenantRepository {
 
       const ownerRole = await tx.role.findFirst({
         where: {
-          name: 'OWNER',
+          name: "OWNER",
           tenantId: tenant.id,
         },
       });
@@ -40,17 +36,20 @@ export class TenantRepository {
         data: {
           userId: user.id,
           tenantId: tenant.id,
-          role: 'OWNER',
+          role: "OWNER",
           roleId: ownerRole?.id ?? null,
         },
       });
 
       const freePlan = await prisma.plan.findFirst({
-        where: { name: 'FREE' },
+        where: { name: "FREE" },
       });
 
       if (!freePlan) {
-        throw new NotFoundException('plan not configured', ErrorCode.NOT_FOUND);
+        throw new NotFoundException(
+          "A FREE plan has not been configured. Create a FREE plan before registering a gym.",
+          ErrorCode.NOT_FOUND,
+        );
       }
 
       await this.billingRepo.createFreeSubscription(tenant.id, freePlan.id, tx);
@@ -192,9 +191,9 @@ export class TenantRepository {
     });
 
     if (!roleRecord) {
-      throw new InternalException(
-        `Role '${roleName}' not found for this tenant`,
-        ErrorCode.INTERNAL_EXCEPTION,
+      throw new NotFoundException(
+        `Role '${roleName}' not found for this gym`,
+        ErrorCode.NOT_FOUND,
       );
     }
 
@@ -204,7 +203,7 @@ export class TenantRepository {
   async listTenantUsers(tenantId: string) {
     return prisma.tenantUser.findMany({
       where: { tenantId },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: "asc" },
       select: {
         id: true,
         role: true,
@@ -228,7 +227,7 @@ export class TenantRepository {
         tenantId,
         expiresAt: { gt: new Date() },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       select: {
         id: true,
         email: true,
@@ -329,22 +328,22 @@ export class TenantRepository {
     return prisma.$transaction(async (tx) => {
       const roleRecord = await tx.role.findFirst({
         where: {
-          name: 'TRAINER',
+          name: "TRAINER",
           tenantId,
         },
       });
 
       if (!roleRecord) {
-        throw new InternalException(
-          "Role 'TRAINER' not found for this tenant",
-          ErrorCode.INTERNAL_EXCEPTION,
+        throw new NotFoundException(
+          "Trainer role is not configured for this gym",
+          ErrorCode.NOT_FOUND,
         );
       }
 
       const createdUser = await tx.user.create({
         data: {
           ...user,
-          role: 'TRAINER',
+          role: "TRAINER",
         },
       });
 
@@ -352,7 +351,7 @@ export class TenantRepository {
         data: {
           userId: createdUser.id,
           tenantId,
-          role: 'TRAINER',
+          role: "TRAINER",
           roleId: roleRecord.id,
         },
       });
@@ -432,7 +431,7 @@ export class TenantRepository {
   async updatePlan(
     tenantId: string,
     newPlanId: string,
-    interval: 'MONTHLY' | 'YEARLY',
+    interval: "MONTHLY" | "YEARLY",
   ) {
     return prisma.$transaction(async (tx) => {
       const existing = await tx.subscription.findUnique({
@@ -441,11 +440,11 @@ export class TenantRepository {
       });
 
       if (!existing) {
-        throw new Error('Subscription not found');
+        throw new Error("Subscription not found");
       }
 
       if (existing.planId === newPlanId) {
-        throw new Error('You are already on this plan');
+        throw new Error("You are already on this plan");
       }
 
       const newPlan = await tx.plan.findUnique({
@@ -453,18 +452,18 @@ export class TenantRepository {
       });
 
       if (!newPlan) {
-        throw new Error('Target plan not found');
+        throw new Error("Target plan not found");
       }
 
-      if (newPlan.name === 'FREE') {
-        throw new Error('Cannot downgrade to FREE plan');
+      if (newPlan.name === "FREE") {
+        throw new Error("Cannot downgrade to FREE plan");
       }
 
       const now = new Date();
 
       let periodEnd: Date;
 
-      if (interval === 'MONTHLY') {
+      if (interval === "MONTHLY") {
         periodEnd = new Date(now.setMonth(now.getMonth() + 1));
       } else {
         periodEnd = new Date(now.setFullYear(now.getFullYear() + 1));
@@ -474,7 +473,7 @@ export class TenantRepository {
         where: { tenantId },
         data: {
           planId: newPlanId,
-          status: 'ACTIVE',
+          status: "ACTIVE",
           currentPeriodStart: new Date(),
           currentPeriodEnd: periodEnd,
         },

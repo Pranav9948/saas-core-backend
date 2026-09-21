@@ -28,6 +28,16 @@ app.post(
   express.raw({ type: "application/json" }),
   webhookHandler,
 );
+app.post(
+  "/api/billing/webhook",
+  express.raw({ type: "application/json" }),
+  webhookHandler,
+);
+app.post(
+  "/api/v1/billing/webhook",
+  express.raw({ type: "application/json" }),
+  webhookHandler,
+);
 
 const HEALTH_CHECK_TIMEOUT_MS = 2000;
 

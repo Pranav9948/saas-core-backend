@@ -1,9 +1,11 @@
 import { SuperAdminSecurity } from '@/core/super-admin.security.js';
 import {
   BadRequestException,
-  NotFoundException,
+  ConflictException,
+  INVALID_CREDENTIALS_MESSAGE,
   UnauthorizedException,
 } from '@/exceptions/exceptions.js';
+import { ErrorCode } from '@/exceptions/root.js';
 import { superAdminRepo } from './super-admin.repository.js';
 import { prisma } from '@/infra/db.js';
 import { hashToken } from '@/core/security.js';
@@ -20,8 +22,9 @@ class SuperAdminService {
     const count = await superAdminRepo.countSuperAdmins();
 
     if (count > 0) {
-      throw new BadRequestException(
-        'Super admin already exists. Setup is complete.',
+      throw new ConflictException(
+        'A super admin already exists. Setup is complete.',
+        ErrorCode.RESOURCE_ALREADY_EXISTS,
       );
     }
 
@@ -41,7 +44,10 @@ class SuperAdminService {
     const superAdmin = await superAdminRepo.findByEmail(email);
 
     if (!superAdmin || !superAdmin.isActive) {
-      throw new NotFoundException('Invalid credentials', 3002);
+      throw new UnauthorizedException(
+        INVALID_CREDENTIALS_MESSAGE,
+        ErrorCode.INVALID_CREDENTIALS,
+      );
     }
 
     const isValidPassword = await SuperAdminSecurity.comparePassword(
@@ -50,7 +56,10 @@ class SuperAdminService {
     );
 
     if (!isValidPassword) {
-      throw new NotFoundException('Invalid credentials', 3002);
+      throw new UnauthorizedException(
+        INVALID_CREDENTIALS_MESSAGE,
+        ErrorCode.INVALID_CREDENTIALS,
+      );
     }
 
     // Generate tokens
@@ -143,7 +152,7 @@ class SuperAdminService {
       const hashedOldToken = hashToken(refreshToken);
       await superAdminRepo.deleteRefreshToken(hashedOldToken);
     } catch (error) {
-      throw new UnauthorizedException('something went wrong');
+      throw new UnauthorizedException('Failed to log out. Please try again.');
     }
   }
 

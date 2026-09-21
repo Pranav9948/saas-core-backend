@@ -15,10 +15,10 @@ export const CreateTrainerSchema = z.object({
 });
 
 export const UpdateTrainerSchema = z.object({
-  params: z.object({ id: z.string().uuid() }),
+  params: z.object({ id: z.string().uuid('Invalid trainer ID') }),
   body: UpdateTrainerBodySchema,
 });
 
 export const GetTrainerIDSchema = z.object({
-  params: z.object({ id: z.string().uuid() }),
+  params: z.object({ id: z.string().uuid('Invalid trainer ID') }),
 });

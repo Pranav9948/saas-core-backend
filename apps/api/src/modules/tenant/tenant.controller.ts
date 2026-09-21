@@ -151,7 +151,10 @@ export const cancelInvite = async (
 ) => {
   try {
     const tenantId = req.user!.tenantId;
-    const result = await tenantService.cancelInvite(tenantId, req.params.id);
+    const result = await tenantService.cancelInvite(
+      tenantId,
+      String(req.params.id),
+    );
 
     res.status(200).json({
       success: true,

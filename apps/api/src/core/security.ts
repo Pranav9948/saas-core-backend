@@ -1,7 +1,8 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { UnauthorizedException } from '@/exceptions/exceptions.js';
+import { AUTH_TOKEN_MESSAGE, UnauthorizedException } from '@/exceptions/exceptions.js';
+import { ErrorCode } from '@/exceptions/root.js';
 
 const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET!;
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET!;
@@ -51,9 +52,15 @@ export const Security = {
       return jwt.verify(token, ACCESS_SECRET) as AccessTokenPayload;
     } catch (err: any) {
       if (err.name === 'TokenExpiredError') {
-        throw new UnauthorizedException('Access token expired');
+        throw new UnauthorizedException(
+          AUTH_TOKEN_MESSAGE,
+          ErrorCode.TOKEN_EXPIRED,
+        );
       }
-      throw new UnauthorizedException('Invalid access token');
+      throw new UnauthorizedException(
+        AUTH_TOKEN_MESSAGE,
+        ErrorCode.INVALID_TOKEN,
+      );
     }
   },
 

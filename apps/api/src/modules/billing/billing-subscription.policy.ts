@@ -73,10 +73,12 @@ export function assertCheckoutPlanEligible(plan: Plan | null): asserts plan is P
   }
 
   if (plan.name === 'FREE') {
-    throw new BadRequestException('Invalid plan');
+    throw new BadRequestException('The FREE plan cannot be purchased with Stripe');
   }
 
   if (!plan.stripePriceId) {
-    throw new BadRequestException('Plan has no Stripe Price ID');
+    throw new BadRequestException(
+      'This plan is not available for checkout because it has no Stripe price',
+    );
   }
 }

@@ -21,20 +21,21 @@ export const RegisterGymSchema = z.object({
       .max(100, 'Gym name cannot exceed 100 characters'),
 
     firstName: z
-      .string({ error: 'first Name of admin is required' })
+      .string({ error: 'First name is required' })
       .trim()
       .min(2, 'First name must be at least 2 characters')
       .max(50, 'First name cannot exceed 50 characters'),
 
     lastName: z
-      .string({ error: 'last Name of admin is required' })
+      .string({ error: 'Last name is required' })
       .trim()
       .min(2, 'Last name must be at least 2 characters')
       .max(50, 'Last name cannot exceed 50 characters'),
 
     email: z
-      .string({ error: 'email is required' })
+      .string({ error: 'Email is required' })
       .trim()
+      .min(1, 'Email is required')
       .email('Invalid email format')
       .toLowerCase(),
 
@@ -83,23 +84,36 @@ export const RegisterGymSchema = z.object({
 
 export const SignupSchema = z.object({
   body: z.object({
-    email: z.string().email('Invalid email format'),
+    email: z
+      .string({ error: 'Email is required' })
+      .min(1, 'Email is required')
+      .email('Invalid email format'),
     password: passwordSchema,
-    firstName: z.string().min(2, 'First name is too short'),
-    lastName: z.string().min(2, 'Last name is too short'),
+    firstName: z
+      .string({ error: 'First name is required' })
+      .min(2, 'First name must be at least 2 characters'),
+    lastName: z
+      .string({ error: 'Last name is required' })
+      .min(2, 'Last name must be at least 2 characters'),
   }),
 });
 
 export const LoginSchema = z.object({
   body: z.object({
-    email: z.string().email('Invalid email format'),
+    email: z
+      .string({ error: 'Email is required' })
+      .min(1, 'Email is required')
+      .email('Invalid email format'),
     password: z.string().min(1, 'Password is required'),
   }),
 });
 
 export const ForgotPasswordSchema = z.object({
   body: z.object({
-    email: z.string().email('Invalid email format'),
+    email: z
+      .string({ error: 'Email is required' })
+      .min(1, 'Email is required')
+      .email('Invalid email format'),
   }),
 });
 

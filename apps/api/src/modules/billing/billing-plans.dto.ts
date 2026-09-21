@@ -26,6 +26,7 @@ export interface BillingPlanDto {
   price: number;
   currency: string;
   interval: BillingInterval;
+  stripePriceId: string | null;
   features: BillingPlanFeatureDto[];
   current: boolean;
 }

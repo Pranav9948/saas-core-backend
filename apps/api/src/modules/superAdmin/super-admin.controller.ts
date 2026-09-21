@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { superAdminService } from './super-admin.services.js';
 import { UnauthorizedException } from '@/exceptions/exceptions.js';
+import { ErrorCode } from '@/exceptions/root.js';
 import { logger } from '@/core/logger.js';
 import { clearAuthCookies, setAuthCookies } from '@/core/auth-cookies.js';
 
@@ -76,7 +77,12 @@ class SuperAdminAuthController {
   ): Promise<void> {
     try {
       const oldToken = req.cookies.refreshToken;
-      if (!oldToken) throw new UnauthorizedException('No refresh token');
+      if (!oldToken) {
+      throw new UnauthorizedException(
+        'Refresh token is missing or expired',
+        ErrorCode.TOKEN_EXPIRED,
+      );
+    }
 
       const { accessToken, refreshToken } =
         await superAdminService.rotateRefreshToken(oldToken);

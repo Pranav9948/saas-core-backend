@@ -34,9 +34,14 @@ export class BillingService {
   async createCheckoutSession(
     tenantId: string,
     userId: string,
-    planId: string,
+    input: { planId?: string; priceId?: string },
   ) {
-    return this.checkoutService.createSession({ tenantId, userId, planId });
+    return this.checkoutService.createSession({
+      tenantId,
+      userId,
+      planId: input.planId,
+      priceId: input.priceId,
+    });
   }
 
   async handleEvent(event: Stripe.Event) {

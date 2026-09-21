@@ -34,6 +34,7 @@ export function mapPlanToDto(
     price: plan.price,
     currency: plan.currency,
     interval: plan.interval,
+    stripePriceId: plan.stripePriceId,
     features: mapPlanFeatures(plan.features),
     current,
   };

@@ -7,24 +7,30 @@ export const BLOCKING_SUBSCRIPTION_STATUSES = [
   'PAST_DUE',
 ] as const;
 
-export const CHECKOUT_SUCCESS_PATH = '/owner/billing/success';
-export const CHECKOUT_CANCEL_PATH = '/owner/billing/cancel';
-export const CUSTOMER_PORTAL_RETURN_PATH = '/owner/billing';
+export const BILLING_PAGE_PATH = '/owner/billing';
+export const CHECKOUT_SUCCESS_PATH = BILLING_PAGE_PATH;
+export const CHECKOUT_CANCEL_PATH = BILLING_PAGE_PATH;
+export const CUSTOMER_PORTAL_RETURN_PATH = BILLING_PAGE_PATH;
 
 export const DEFAULT_PAYMENT_HISTORY_LIMIT = 10;
 export const MAX_PAYMENT_HISTORY_LIMIT = 100;
 
+function frontendOrigin(): string {
+  return config.FRONTEND_URL.replace(/\/$/, '');
+}
+
 export function buildCheckoutSuccessUrl(): string {
-  const base = config.FRONTEND_URL.replace(/\/$/, '');
-  return `${base}${CHECKOUT_SUCCESS_PATH}?session_id={CHECKOUT_SESSION_ID}`;
+  return `${frontendOrigin()}${BILLING_PAGE_PATH}?success=true&session_id={CHECKOUT_SESSION_ID}`;
 }
 
 export function buildCheckoutCancelUrl(): string {
-  const base = config.FRONTEND_URL.replace(/\/$/, '');
-  return `${base}${CHECKOUT_CANCEL_PATH}`;
+  return `${frontendOrigin()}${BILLING_PAGE_PATH}?canceled=true`;
+}
+
+export function buildBillingSuccessUrl(): string {
+  return `${frontendOrigin()}${BILLING_PAGE_PATH}?success=true`;
 }
 
 export function buildCustomerPortalReturnUrl(): string {
-  const base = config.FRONTEND_URL.replace(/\/$/, '');
-  return `${base}${CUSTOMER_PORTAL_RETURN_PATH}`;
+  return `${frontendOrigin()}${CUSTOMER_PORTAL_RETURN_PATH}`;
 }
