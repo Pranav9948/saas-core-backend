@@ -7,6 +7,7 @@ import * as staffAttendanceController from './staff-attendance.controller.js';
 import {
   MarkStaffAttendanceSchema,
   StaffAttendanceQuerySchema,
+  ListStaffAttendanceQuerySchema,
 } from './staff-attendance.schema.js';
 
 const router: ExpressRouter = Router();
@@ -18,6 +19,13 @@ router.get(
   authorizePermissions(PERMISSIONS.TENANT_VIEW),
   validate(StaffAttendanceQuerySchema),
   staffAttendanceController.getStaffMetrics,
+);
+
+router.get(
+  '/',
+  authorizePermissions(PERMISSIONS.ATTENDANCE_VIEW),
+  validate(ListStaffAttendanceQuerySchema),
+  staffAttendanceController.listStaffAttendance,
 );
 
 router.post(

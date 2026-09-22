@@ -145,6 +145,28 @@ export const getMemberHistory = async (
   }
 };
 
+export const markPaymentPaid = async (
+  req: Request<MemberParams>,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const member = await memberService.markPaymentPaid(
+      req.params.id,
+      req.user!.tenantId,
+      { userId: req.user!.userId },
+    );
+
+    res.status(200).json({
+      success: true,
+      data: member,
+      message: 'Payment marked as paid. The gym owner has been notified.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const sendRenewalReminder = async (
   req: Request<MemberParams>,
   res: Response,

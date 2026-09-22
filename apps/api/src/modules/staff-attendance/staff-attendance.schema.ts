@@ -17,6 +17,12 @@ export const MarkStaffAttendanceSchema = z.object({
   }),
 });
 
+export const ListStaffAttendanceQuerySchema = z.object({
+  query: z.object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD'),
+  }),
+});
+
 export const TrainerPerformanceQuerySchema = z.object({
   params: z.object({ id: z.string().uuid('Invalid trainer ID') }),
   query: z.object({

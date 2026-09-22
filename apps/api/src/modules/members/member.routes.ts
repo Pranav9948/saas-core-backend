@@ -28,6 +28,13 @@ router.get(
   memberController.getAllMembers,
 );
 router.post(
+  '/:id/mark-paid',
+  authenticate,
+  authorizePermissions(PERMISSIONS.MEMBER_UPDATE),
+  validate(MemberIdSchema),
+  memberController.markPaymentPaid,
+);
+router.post(
   '/:id/renewal-reminder',
   authenticate,
   authorizePermissions(PERMISSIONS.MEMBER_UPDATE),

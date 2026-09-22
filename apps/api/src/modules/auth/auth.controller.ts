@@ -98,22 +98,53 @@ export const getMe = async (
 
     const tenantPrisma = getTenantPrisma(prisma, tenantId);
 
-    const user = await tenantPrisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-      },
-    });
+    const [user, tenant, tenantUser] = await Promise.all([
+      tenantPrisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+        },
+      }),
+      prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          logoUrl: true,
+          contactEmail: true,
+          contactPhone: true,
+          address: true,
+          city: true,
+          state: true,
+          country: true,
+          timezone: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      prisma.tenantUser.findFirst({
+        where: { userId, tenantId },
+        select: { role: true },
+      }),
+    ]);
 
     if (!user) {
       throw new NotFoundException("User not found", ErrorCode.USER_NOT_FOUND);
     }
 
-    res.status(200).json({ success: true, data: user });
+    res.status(200).json({
+      success: true,
+      data: {
+        ...user,
+        role: tenantUser?.role ?? user.role,
+        tenant,
+      },
+    });
   } catch (error) {
     next(error);
   }

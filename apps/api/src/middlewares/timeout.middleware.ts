@@ -8,6 +8,7 @@ const LONG_RUNNING_PATHS = [
   '/billing/webhook',
   '/api/webhook',
   '/renewal-reminder',
+  '/mark-paid',
 ];
 
 export const requestTimeout = (ms: number) => {

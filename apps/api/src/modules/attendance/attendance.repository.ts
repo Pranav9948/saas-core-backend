@@ -37,6 +37,7 @@ export class AttendanceRepository {
         deviceInfo: true,
         member: {
           select: {
+            id: true,
             firstName: true,
             lastName: true,
             email: true,
@@ -50,7 +51,15 @@ export class AttendanceRepository {
     return prisma.attendance.findMany({
       where: { tenantId, checkIn: { gte: start, lte: end } },
       include: {
-        member: { select: { firstName: true, lastName: true, status: true } },
+        member: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            status: true,
+          },
+        },
       },
       orderBy: { checkIn: 'desc' },
     });
