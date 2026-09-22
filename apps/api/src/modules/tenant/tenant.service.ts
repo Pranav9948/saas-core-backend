@@ -33,6 +33,10 @@ export class TenantService {
     if (inviterRole === 'ADMIN' && targetRole === 'ADMIN') {
       throw new BadRequestException('ADMIN cannot create another ADMIN');
     }
+
+    if (inviterRole === 'STAFF' && targetRole !== 'TRAINER') {
+      throw new BadRequestException('Staff can only create trainers');
+    }
   }
 
   async generateUniqueSlug(name: string) {

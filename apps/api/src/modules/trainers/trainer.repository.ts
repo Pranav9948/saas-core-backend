@@ -54,6 +54,7 @@ export class TrainerRepository {
         specialization: true,
         bio: true,
         createdAt: true,
+        userId: true,
 
         user: {
           select: {

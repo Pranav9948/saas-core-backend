@@ -33,6 +33,7 @@ export const memberListSelect = {
       durationDays: true,
       price: true,
       currency: true,
+      features: true,
     },
   },
 } satisfies Prisma.MemberSelect;

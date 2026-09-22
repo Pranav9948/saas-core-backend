@@ -22,9 +22,11 @@ import {
 } from './member-membership.utils.js';
 import {
   membershipRenewalTemplate,
+  paymentCompletedOwnerTemplate,
   sendTransactionalEmail,
 } from '@/core/mail.js';
 import { prisma } from '@/infra/db.js';
+import { logger } from '@/core/logger.js';
 
 function toMemberDto<T extends {
   paymentStatus: 'PAID' | 'PENDING';
@@ -96,6 +98,16 @@ export class MemberService {
       throw new NotFoundException(
         'Selected package was not found or is inactive',
         ErrorCode.NOT_FOUND,
+      );
+    }
+
+    const needsPersonalTrainer = membershipPackage.features.includes(
+      'personal_training',
+    );
+
+    if (needsPersonalTrainer && !data.assignedTrainerId) {
+      throw new BadRequestException(
+        'This package includes personal training. Please assign a trainer.',
       );
     }
 
@@ -202,6 +214,11 @@ export class MemberService {
     let packageConnect: Prisma.MemberUpdateInput['membershipPackage'];
     let membershipStartDate: Date | undefined;
     let membershipExpiresAt: Date | undefined;
+    let paymentStatus = data.paymentStatus;
+    let nextPackageFeatures = member.membershipPackage?.features ?? [];
+    const packageChanged = Boolean(
+      data.packageId && data.packageId !== member.packageId,
+    );
 
     if (data.packageId) {
       const membershipPackage = await this.packageRepo.findById(
@@ -214,11 +231,29 @@ export class MemberService {
           ErrorCode.NOT_FOUND,
         );
       }
-      packageConnect = { connect: { id: membershipPackage.id } };
-      membershipStartDate = startOfUtcDay();
-      membershipExpiresAt = addUtcDays(
-        membershipStartDate,
-        membershipPackage.durationDays,
+      nextPackageFeatures = membershipPackage.features;
+
+      if (packageChanged) {
+        packageConnect = { connect: { id: membershipPackage.id } };
+        membershipStartDate = startOfUtcDay();
+        membershipExpiresAt = addUtcDays(
+          membershipStartDate,
+          membershipPackage.durationDays,
+        );
+        if (!paymentStatus) {
+          paymentStatus = 'PENDING';
+        }
+      }
+    }
+
+    const nextTrainerId =
+      data.assignedTrainerId !== undefined
+        ? data.assignedTrainerId
+        : (member.assignedTrainer?.id ?? null);
+
+    if (nextPackageFeatures.includes('personal_training') && !nextTrainerId) {
+      throw new BadRequestException(
+        'This package includes personal training. Please assign a trainer.',
       );
     }
 
@@ -238,7 +273,7 @@ export class MemberService {
       ...(packageConnect && { membershipPackage: packageConnect }),
       ...(membershipStartDate && { membershipStartDate }),
       ...(membershipExpiresAt && { membershipExpiresAt }),
-      ...(data.paymentStatus && { paymentStatus: data.paymentStatus }),
+      ...(paymentStatus && { paymentStatus }),
     };
 
     const updated = await this.memberRepo.update(id, updateData, tenantId);
@@ -304,6 +339,117 @@ export class MemberService {
     });
 
     return { sent: true, to: member.email };
+  }
+
+  async markPaymentPaid(
+    id: string,
+    tenantId: string,
+    recordedBy: { userId: string },
+  ) {
+    const member = await this.memberRepo.findById(id, tenantId);
+    if (!member) {
+      throw new NotFoundException('Member not found', ErrorCode.NOT_FOUND);
+    }
+
+    const remaining = daysRemaining(member.membershipExpiresAt);
+    const alreadyPaidThisCycle =
+      member.paymentStatus === 'PAID' && (remaining === null || remaining >= 0);
+
+    if (alreadyPaidThisCycle) {
+      throw new BadRequestException(
+        'This member is already marked as paid for the current cycle',
+      );
+    }
+
+    let membershipStartDate: Date | undefined;
+    let membershipExpiresAt: Date | undefined;
+
+    if (remaining !== null && remaining < 0 && member.membershipPackage) {
+      membershipStartDate = startOfUtcDay();
+      membershipExpiresAt = addUtcDays(
+        membershipStartDate,
+        member.membershipPackage.durationDays,
+      );
+    }
+
+    const updated = await this.memberRepo.update(
+      id,
+      {
+        paymentStatus: 'PAID',
+        ...(membershipStartDate && { membershipStartDate }),
+        ...(membershipExpiresAt && { membershipExpiresAt }),
+      },
+      tenantId,
+    );
+
+    const dto = toMemberDto(updated);
+    const staff = await prisma.user.findUnique({
+      where: { id: recordedBy.userId },
+      select: { firstName: true, lastName: true },
+    });
+    await this.notifyOwnerPaymentCompleted({
+      tenantId,
+      memberName: `${member.firstName} ${member.lastName}`,
+      memberEmail: member.email,
+      packageName: member.membershipPackage?.name ?? 'membership',
+      amount: member.membershipPackage?.price ?? 0,
+      currency: member.membershipPackage?.currency ?? 'INR',
+      recordedByName: staff
+        ? `${staff.firstName} ${staff.lastName}`.trim()
+        : 'Staff',
+      renewed: Boolean(membershipStartDate),
+    });
+
+    return dto;
+  }
+
+  private async notifyOwnerPaymentCompleted(payload: {
+    tenantId: string;
+    memberName: string;
+    memberEmail: string;
+    packageName: string;
+    amount: number;
+    currency: string;
+    recordedByName: string;
+    renewed: boolean;
+  }) {
+    const [tenant, owner] = await Promise.all([
+      prisma.tenant.findUnique({
+        where: { id: payload.tenantId },
+        select: { name: true, contactEmail: true },
+      }),
+      prisma.tenantUser.findFirst({
+        where: { tenantId: payload.tenantId, role: 'OWNER' },
+        select: {
+          user: { select: { email: true, firstName: true } },
+        },
+      }),
+    ]);
+
+    const ownerEmail = owner?.user.email || tenant?.contactEmail;
+    if (!ownerEmail) {
+      return;
+    }
+
+    try {
+      await sendTransactionalEmail({
+        to: ownerEmail,
+        subject: `Payment received: ${payload.memberName}`,
+        html: paymentCompletedOwnerTemplate({
+          ownerName: owner?.user.firstName ?? 'there',
+          gymName: tenant?.name ?? 'your gym',
+          memberName: payload.memberName,
+          memberEmail: payload.memberEmail,
+          packageName: payload.packageName,
+          amount: payload.amount,
+          currency: payload.currency,
+          recordedByName: payload.recordedByName,
+          renewed: payload.renewed,
+        }),
+      });
+    } catch (error) {
+      logger.error({ error }, 'Failed to notify owner of member payment');
+    }
   }
 
   async enforceMemberLimit(tenantId: string) {

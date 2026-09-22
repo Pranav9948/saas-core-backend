@@ -71,3 +71,40 @@ export function membershipRenewalTemplate(payload: {
     </div>
   `;
 }
+
+export function paymentCompletedOwnerTemplate(payload: {
+  ownerName: string;
+  gymName: string;
+  memberName: string;
+  memberEmail: string;
+  packageName: string;
+  amount: number;
+  currency: string;
+  recordedByName: string;
+  renewed: boolean;
+}): string {
+  return `
+    <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee;">
+      <h2 style="color: #111;">Payment completed</h2>
+      <p>Hi ${payload.ownerName},</p>
+      <p>
+        <strong>${payload.recordedByName}</strong> marked
+        <strong>${payload.memberName}</strong> (${payload.memberEmail}) as paid
+        at <strong>${payload.gymName}</strong>.
+      </p>
+      <p>
+        Package: <strong>${payload.packageName}</strong><br>
+        Amount: <strong>${payload.currency} ${payload.amount}</strong>
+      </p>
+      <p>
+        ${
+          payload.renewed
+            ? 'Their membership dates were renewed for a new cycle.'
+            : 'Their current membership cycle is now marked as paid.'
+        }
+      </p>
+      <hr style="border: none; border-top: 1px solid #eee; margin-top: 20px;">
+      <p style="font-size: 0.8em; color: #777;">Sent from ${payload.gymName} via GymFlow</p>
+    </div>
+  `;
+}

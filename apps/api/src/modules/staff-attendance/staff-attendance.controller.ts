@@ -39,6 +39,23 @@ export const markStaffAttendance = async (
   }
 };
 
+export const listStaffAttendance = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const date = String(req.query.date);
+    const data = await staffAttendanceService.listByDate(
+      req.user!.tenantId,
+      date,
+    );
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getTrainerOverview = async (
   req: Request,
   res: Response,

@@ -163,6 +163,43 @@ export class StaffAttendanceService {
     };
   }
 
+  async listByDate(tenantId: string, date: string) {
+    const day = parseDateOnly(date);
+    const records = await prisma.staffAttendance.findMany({
+      where: { tenantId, date: day },
+      orderBy: { checkIn: 'desc' },
+      select: {
+        id: true,
+        userId: true,
+        trainerId: true,
+        date: true,
+        present: true,
+        checkIn: true,
+        notes: true,
+        user: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    return records.map((record) => ({
+      id: record.id,
+      userId: record.userId,
+      trainerId: record.trainerId,
+      date: record.date.toISOString().slice(0, 10),
+      present: record.present,
+      checkIn: record.checkIn,
+      notes: record.notes,
+      firstName: record.user.firstName,
+      lastName: record.user.lastName,
+      email: record.user.email,
+    }));
+  }
+
   async getTrainerPerformance(
     trainerId: string,
     tenantId: string,
