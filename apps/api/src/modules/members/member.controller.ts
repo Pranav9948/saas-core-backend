@@ -31,8 +31,32 @@ export const getAllMembers = async (
 
     const page = Math.max(Number(req.query.page) || 1, 1);
     const limit = Math.min(Number(req.query.limit) || 10, 50);
+    const packageId =
+      typeof req.query.packageId === 'string' ? req.query.packageId : undefined;
+    const paymentStatus =
+      typeof req.query.paymentStatus === 'string'
+        ? (req.query.paymentStatus as
+            | 'PAID'
+            | 'PENDING'
+            | 'OVERDUE'
+            | 'UNPAID')
+        : undefined;
+    const expirationWindow =
+      typeof req.query.expirationWindow === 'string'
+        ? (req.query.expirationWindow as
+            | 'expiring_7'
+            | 'expiring_today'
+            | 'expired')
+        : undefined;
+    const search =
+      typeof req.query.search === 'string' ? req.query.search : undefined;
 
-    const result = await memberService.listMembers(page, limit, tenantId);
+    const result = await memberService.listMembers(page, limit, tenantId, {
+      packageId,
+      paymentStatus,
+      expirationWindow,
+      search,
+    });
 
     res.status(200).json({
       success: true,
@@ -115,6 +139,26 @@ export const getMemberHistory = async (
     res.status(200).json({
       success: true,
       data: history,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const sendRenewalReminder = async (
+  req: Request<MemberParams>,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const result = await memberService.sendRenewalReminder(
+      req.params.id,
+      req.user!.tenantId,
+    );
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: 'Renewal reminder email sent',
     });
   } catch (error) {
     next(error);

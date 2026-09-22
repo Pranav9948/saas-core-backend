@@ -24,12 +24,14 @@ model Tenant {
   logoUrl          String?        @map("logo_url")
   stripeCustomerId String?        @unique
   attendance       Attendance[]
-  members          Member[]
-  refreshToken     RefreshToken[]
-  roles            Role[]
-  tenantUsers      TenantUser[]
-  trainers         Trainer[]
-  subscriptions    Subscription[]
+  members              Member[]
+  refreshToken         RefreshToken[]
+  roles                Role[]
+  tenantUsers          TenantUser[]
+  trainers             Trainer[]
+  subscriptions        Subscription[]
+  membershipPackages   MembershipPackage[]
+  staffAttendances     StaffAttendance[]
   memberGoal       MemberGoal[]
   workoutPlan      WorkoutPlan[]
   dietLog          DietLog[]
@@ -69,32 +71,40 @@ model User {
   refreshToken     RefreshToken[]
   tenants          TenantUser[]
   trainerProfile   Trainer?
+  staffAttendances StaffAttendance[]
 
   @@map("users")
 }
 
 model Member {
-  id                String        @id @default(uuid()) @db.Uuid
-  email             String
-  firstName         String        @map("first_name")
-  lastName          String        @map("last_name")
-  phone             String?
-  dateOfBirth       DateTime?     @map("date_of_birth")
-  status            MemberStatus  @default(ACTIVE)
-  assignedTrainerId String?       @map("assigned_trainer_id") @db.Uuid
-  createdAt         DateTime      @default(now()) @map("created_at")
-  updatedAt         DateTime      @updatedAt @map("updated_at")
-  tenantId          String        @map("tenant_id") @db.Uuid
-  attendances       Attendance[]
-  assignedTrainer   Trainer?      @relation(fields: [assignedTrainerId], references: [id])
-  tenant            Tenant        @relation(fields: [tenantId], references: [id])
-  memberGoal        MemberGoal[]
-  workoutPlan       WorkoutPlan[]
-  dietLog           DietLog[]
-  workoutLog        WorkoutLog[]
-  weightLog         WeightLog[]
+  id                   String              @id @default(uuid()) @db.Uuid
+  email                String
+  firstName            String              @map("first_name")
+  lastName             String              @map("last_name")
+  phone                String?
+  dateOfBirth          DateTime?           @map("date_of_birth")
+  status               MemberStatus        @default(ACTIVE)
+  assignedTrainerId    String?             @map("assigned_trainer_id") @db.Uuid
+  packageId            String?             @map("package_id") @db.Uuid
+  membershipStartDate  DateTime?           @map("membership_start_date")
+  membershipExpiresAt  DateTime?           @map("membership_expires_at")
+  paymentStatus        MemberPaymentStatus @default(PENDING) @map("payment_status")
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+  tenantId             String              @map("tenant_id") @db.Uuid
+  attendances          Attendance[]
+  assignedTrainer      Trainer?            @relation(fields: [assignedTrainerId], references: [id])
+  membershipPackage    MembershipPackage?  @relation(fields: [packageId], references: [id])
+  tenant               Tenant              @relation(fields: [tenantId], references: [id])
+  memberGoal           MemberGoal[]
+  workoutPlan          WorkoutPlan[]
+  dietLog              DietLog[]
+  workoutLog           WorkoutLog[]
+  weightLog            WeightLog[]
 
   @@unique([email, tenantId])
+  @@index([tenantId, packageId])
+  @@index([tenantId, membershipExpiresAt])
   @@map("members")
 }
 
@@ -106,10 +116,11 @@ model Trainer {
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
   tenantId       String        @map("tenant_id") @db.Uuid
-  members        Member[]
-  workoutPlan    WorkoutPlan[]
-  tenant         Tenant        @relation(fields: [tenantId], references: [id])
-  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  members          Member[]
+  workoutPlan      WorkoutPlan[]
+  staffAttendances StaffAttendance[]
+  tenant           Tenant            @relation(fields: [tenantId], references: [id])
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, tenantId])
   @@map("trainers")
@@ -225,6 +236,53 @@ enum MemberStatus {
   PENDING
   BANNED
   DELETED
+}
+
+enum MemberPaymentStatus {
+  PAID
+  PENDING
+}
+
+model MembershipPackage {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  name         String
+  description  String?
+  durationDays Int      @map("duration_days")
+  price        Int
+  currency     String   @default("INR")
+  isActive     Boolean  @default(true) @map("is_active")
+  features     String[] @default([])
+  featureLimits Json    @default("{}") @map("feature_limits")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  members      Member[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, isActive])
+  @@map("membership_packages")
+}
+
+model StaffAttendance {
+  id        String    @id @default(uuid()) @db.Uuid
+  tenantId  String    @map("tenant_id") @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  trainerId String?   @map("trainer_id") @db.Uuid
+  date      DateTime  @db.Date
+  checkIn   DateTime  @default(now()) @map("check_in")
+  checkOut  DateTime? @map("check_out")
+  present   Boolean   @default(true)
+  notes     String?
+  createdAt DateTime  @default(now()) @map("created_at")
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trainer   Trainer?  @relation(fields: [trainerId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, userId, date])
+  @@index([tenantId, date])
+  @@index([trainerId, date])
+  @@map("staff_attendance")
 }
 
 model Plan {

@@ -21,6 +21,8 @@ const MemberBodySchema = z.object({
     .uuid('Invalid trainer ID')
     .optional()
     .nullable(),
+  packageId: z.string().uuid('Invalid package ID'),
+  paymentStatus: z.enum(['PAID', 'PENDING']).optional(),
 });
 
 export const CreateMemberSchema = z.object({ body: MemberBodySchema });
@@ -32,4 +34,19 @@ export const UpdateMemberSchema = z.object({
 
 export const MemberIdSchema = z.object({
   params: z.object({ id: z.string().uuid('Invalid member ID') }),
+});
+
+export const ListMembersQuerySchema = z.object({
+  query: z.object({
+    page: z.coerce.number().int().min(1).optional(),
+    limit: z.coerce.number().int().min(1).max(50).optional(),
+    packageId: z.string().uuid('Invalid package ID').optional(),
+    paymentStatus: z
+      .enum(['PAID', 'PENDING', 'OVERDUE', 'UNPAID'])
+      .optional(),
+    expirationWindow: z
+      .enum(['expiring_7', 'expiring_today', 'expired'])
+      .optional(),
+    search: z.string().trim().max(80).optional(),
+  }),
 });

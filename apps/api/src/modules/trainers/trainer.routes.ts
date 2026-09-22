@@ -9,6 +9,8 @@ import {
 } from './trainer.schema.js';
 import { authorizePermissions } from '@/middlewares/permission.middleware.js';
 import { PERMISSIONS } from '../rbac/permissions.constants.js';
+import * as staffAttendanceController from '../staff-attendance/staff-attendance.controller.js';
+import { TrainerPerformanceQuerySchema } from '../staff-attendance/staff-attendance.schema.js';
 
 const router: ExpressRouter = Router();
 
@@ -25,6 +27,19 @@ router.get(
   '/',
   authorizePermissions(PERMISSIONS.TRAINER_VIEW),
   trainerController.listTrainers,
+);
+
+router.get(
+  '/overview',
+  authorizePermissions(PERMISSIONS.TRAINER_VIEW),
+  staffAttendanceController.getTrainerOverview,
+);
+
+router.get(
+  '/:id/performance',
+  authorizePermissions(PERMISSIONS.TRAINER_VIEW),
+  validate(TrainerPerformanceQuerySchema),
+  staffAttendanceController.getTrainerPerformance,
 );
 
 router.get(

@@ -50,6 +50,19 @@ describe('POST /members', () => {
     await prisma.$disconnect();
   });
 
+  it('should fail if packageId is missing', async () => {
+    const response = await request(app)
+      .post('/api/v1/members')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        email: `nopackage-${crypto.randomUUID()}@example.com`,
+        firstName: 'Test',
+        lastName: 'User',
+      });
+
+    expect(response.status).toBe(400);
+  });
+
   it('should create member successfully', async () => {
     const email = `integration-${crypto.randomUUID()}@example.com`;
 
@@ -62,6 +75,7 @@ describe('POST /members', () => {
         lastName: 'User',
         phone: '9999999999',
         dateOfBirth: '2000-01-01',
+        packageId: crypto.randomUUID(),
       });
 
     expect(response.status).toBe(201);
@@ -87,6 +101,7 @@ describe('POST /members', () => {
         email: duplicateEmail,
         firstName: 'Test',
         lastName: 'User',
+        packageId: crypto.randomUUID(),
       });
 
     expect(response.status).toBe(409);
@@ -103,6 +118,7 @@ describe('POST /members', () => {
         phone: '9999999999',
         dateOfBirth: '2000-01-01',
         assignedTrainerId: '00000000-0000-0000-0000-000000000000',
+        packageId: crypto.randomUUID(),
       });
     expect(response.status).toBe(404);
   });
@@ -118,6 +134,7 @@ describe('POST /members', () => {
         phone: '9999999999',
         dateOfBirth: '2000-01-01',
         assignedTrainerId: trainerId,
+        packageId: crypto.randomUUID(),
       });
 
     expect(response.status).toBe(201);

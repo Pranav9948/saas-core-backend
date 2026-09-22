@@ -8,35 +8,55 @@ describe('MemberService - deleteMember', () => {
   let memberRepo: any;
   let trainerRepo: any;
 
+  const tenantId = 'tenant-uuid';
+  const userId = 'user-uuid';
+
   beforeEach(() => {
     memberRepo = {
       findById: jest.fn(),
       softDelete: jest.fn(),
     };
 
-    memberService = new MemberService(trainerRepo, memberRepo);
+    trainerRepo = {
+      findById: jest.fn(),
+    };
+
+    memberService = new MemberService(
+      trainerRepo,
+      memberRepo,
+      { getSubscriptionWithPlan: jest.fn() } as never,
+      { ensureCanCreateMember: jest.fn() } as never,
+      { findById: jest.fn() } as never,
+    );
   });
 
   it('should soft delete member when member exists', async () => {
     const memberId = 'uuid-123';
 
-    memberRepo.findById.mockResolvedValue({ id: memberId });
+    memberRepo.findById.mockResolvedValue({
+      id: memberId,
+      status: 'ACTIVE',
+      paymentStatus: 'PAID',
+      membershipExpiresAt: null,
+    });
     memberRepo.softDelete.mockResolvedValue({
       id: memberId,
       status: 'DELETED',
     });
 
-    const result = await memberService.deleteMember(memberId);
+    const result = await memberService.deleteMember(memberId, tenantId, userId);
 
-    expect(memberRepo.findById).toHaveBeenCalledWith(memberId);
-    expect(memberRepo.softDelete).toHaveBeenCalledWith(memberId);
+    expect(memberRepo.findById).toHaveBeenCalledWith(memberId, tenantId);
+    expect(memberRepo.softDelete).toHaveBeenCalledWith(memberId, tenantId, userId);
     expect(result.status).toBe('DELETED');
   });
 
   it('should throw NotFoundException if member does not exist', async () => {
     memberRepo.findById.mockResolvedValue(null);
 
-    await expect(memberService.deleteMember('invalid-id')).rejects.toThrow(
+    await expect(
+      memberService.deleteMember('invalid-id', tenantId, userId),
+    ).rejects.toThrow(
       new NotFoundException('Member not found', ErrorCode.NOT_FOUND),
     );
 

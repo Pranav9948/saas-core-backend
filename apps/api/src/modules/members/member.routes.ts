@@ -4,6 +4,7 @@ import { validate } from '@/middlewares/validate.middleware.js';
 import { authenticate } from '@/middlewares/auth.middleware.js';
 import {
   CreateMemberSchema,
+  ListMembersQuerySchema,
   MemberIdSchema,
   UpdateMemberSchema,
 } from './member.schema.js';
@@ -23,7 +24,15 @@ router.get(
   '/',
   authenticate,
   authorizePermissions(PERMISSIONS.MEMBER_VIEW),
+  validate(ListMembersQuerySchema),
   memberController.getAllMembers,
+);
+router.post(
+  '/:id/renewal-reminder',
+  authenticate,
+  authorizePermissions(PERMISSIONS.MEMBER_UPDATE),
+  validate(MemberIdSchema),
+  memberController.sendRenewalReminder,
 );
 router.get(
   '/:id',
