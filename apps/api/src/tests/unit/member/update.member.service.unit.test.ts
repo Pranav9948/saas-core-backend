@@ -9,6 +9,17 @@ describe('MemberService - updateMember', () => {
 
   let mockMemberRepo: jest.Mocked<MemberRepository>;
   let mockTrainerRepo: jest.Mocked<TrainerRepository>;
+  let mockPackageRepo: {
+    findById: jest.Mock;
+  };
+
+  const tenantId = 'tenant-uuid';
+  const memberId = '550e8400-e29b-41d4-a716-446655440000';
+  const existingMember = {
+    id: memberId,
+    paymentStatus: 'PAID' as const,
+    membershipExpiresAt: null,
+  };
 
   beforeEach(() => {
     mockMemberRepo = {
@@ -20,41 +31,57 @@ describe('MemberService - updateMember', () => {
       findById: jest.fn(),
     } as unknown as jest.Mocked<TrainerRepository>;
 
-    service = new MemberService(mockTrainerRepo, mockMemberRepo);
-  });
+    mockPackageRepo = {
+      findById: jest.fn(),
+    };
 
-  const memberId = '550e8400-e29b-41d4-a716-446655440000';
+    service = new MemberService(
+      mockTrainerRepo,
+      mockMemberRepo,
+      { getSubscriptionWithPlan: jest.fn() } as never,
+      { ensureCanCreateMember: jest.fn() } as never,
+      mockPackageRepo as never,
+    );
+  });
 
   it('should throw NotFoundException if member does not exist', async () => {
     mockMemberRepo.findById.mockResolvedValue(null);
 
     await expect(
-      service.updateMember(memberId, { firstName: 'Updated' }),
+      service.updateMember(memberId, { firstName: 'Updated' }, tenantId),
     ).rejects.toThrow(NotFoundException);
   });
 
   it('should throw NotFoundException if assigned trainer does not exist', async () => {
-    mockMemberRepo.findById.mockResolvedValue({ id: memberId } as any);
+    mockMemberRepo.findById.mockResolvedValue(existingMember as never);
     mockTrainerRepo.findById.mockResolvedValue(null);
 
     await expect(
-      service.updateMember(memberId, {
-        assignedTrainerId: 'trainer-uuid',
-      }),
+      service.updateMember(
+        memberId,
+        { assignedTrainerId: 'trainer-uuid' },
+        tenantId,
+      ),
     ).rejects.toThrow(NotFoundException);
   });
 
   it('should update successfully', async () => {
-    const existingMember = { id: memberId } as any;
-    const updatedMember = { id: memberId, firstName: 'Updated' } as any;
-
-    mockMemberRepo.findById.mockResolvedValue(existingMember);
-    mockMemberRepo.update.mockResolvedValue(updatedMember);
-
-    const result = await service.updateMember(memberId, {
+    const updatedMember = {
+      ...existingMember,
       firstName: 'Updated',
-    });
+    };
 
-    expect(result).toEqual(updatedMember);
+    mockMemberRepo.findById.mockResolvedValue(existingMember as never);
+    mockMemberRepo.update.mockResolvedValue(updatedMember as never);
+
+    const result = await service.updateMember(
+      memberId,
+      { firstName: 'Updated' },
+      tenantId,
+    );
+
+    expect(result.id).toBe(memberId);
+    expect(result.firstName).toBe('Updated');
+    expect(result.paymentStatus).toBe('PAID');
   });
 });

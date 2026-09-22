@@ -24,4 +24,16 @@ export type EmailJobData =
       to: string;
       tenantId: string;
       payload: Record<string, never>;
+    }
+  | {
+      type: 'MEMBER_RENEWAL_REMINDER';
+      to: string;
+      tenantId: string;
+      payload: {
+        name: string;
+        gymName: string;
+        packageName: string;
+        expirationDate: string;
+        remainingDays: number;
+      };
     };

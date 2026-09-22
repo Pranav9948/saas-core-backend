@@ -7,6 +7,7 @@ const LONG_RUNNING_PATHS = [
   '/billing/create-portal-session',
   '/billing/webhook',
   '/api/webhook',
+  '/renewal-reminder',
 ];
 
 export const requestTimeout = (ms: number) => {

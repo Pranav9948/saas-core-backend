@@ -1,5 +1,8 @@
 import { TrainerRepository } from './../trainers/trainer.repository.js';
-import { MemberRepository } from './member.repository.js';
+import {
+  MemberRepository,
+  type MemberListFilter,
+} from './member.repository.js';
 import {
   BadRequestException,
   ConflictException,
@@ -7,9 +10,37 @@ import {
 } from '@/exceptions/exceptions.js';
 import { ErrorCode } from '@/exceptions/root.js';
 import { Prisma } from '@/generated/prisma/client.js';
-import { prisma } from '@/infra/db.js';
 import { BillingRepository } from '../billing/billing.repository.js';
 import { FeatureGuardService } from '../feature-usage/feature-guard.service.js';
+import { MembershipPackageRepository } from '../packages/package.repository.js';
+import {
+  addUtcDays,
+  daysRemaining,
+  isExpiringOrExpired,
+  resolvePaymentStatus,
+  startOfUtcDay,
+} from './member-membership.utils.js';
+import {
+  membershipRenewalTemplate,
+  sendTransactionalEmail,
+} from '@/core/mail.js';
+import { prisma } from '@/infra/db.js';
+
+function toMemberDto<T extends {
+  paymentStatus: 'PAID' | 'PENDING';
+  membershipExpiresAt: Date | null;
+}>(member: T) {
+  const remainingDays = daysRemaining(member.membershipExpiresAt);
+  return {
+    ...member,
+    remainingDays,
+    paymentStatus: resolvePaymentStatus(
+      member.paymentStatus,
+      member.membershipExpiresAt,
+    ),
+    canSendRenewalReminder: isExpiringOrExpired(member.membershipExpiresAt),
+  };
+}
 
 export class MemberService {
   constructor(
@@ -17,6 +48,7 @@ export class MemberService {
     private memberRepo = new MemberRepository(),
     private billingRepo = new BillingRepository(),
     private featureGuard = new FeatureGuardService(),
+    private packageRepo = new MembershipPackageRepository(),
   ) {}
 
   async createMember(
@@ -27,6 +59,8 @@ export class MemberService {
       phone?: string;
       dateOfBirth?: string;
       assignedTrainerId?: string;
+      packageId: string;
+      paymentStatus?: 'PAID' | 'PENDING';
     },
     tenantId: string,
   ) {
@@ -53,6 +87,18 @@ export class MemberService {
       );
     }
 
+    const membershipPackage = await this.packageRepo.findById(
+      data.packageId,
+      tenantId,
+    );
+
+    if (!membershipPackage || !membershipPackage.isActive) {
+      throw new NotFoundException(
+        'Selected package was not found or is inactive',
+        ErrorCode.NOT_FOUND,
+      );
+    }
+
     if (data.assignedTrainerId) {
       const trainer = await this.trainerRepo.findById(
         data.assignedTrainerId,
@@ -65,7 +111,10 @@ export class MemberService {
         );
     }
 
-    const createData = {
+    const startDate = startOfUtcDay();
+    const expirationDate = addUtcDays(startDate, membershipPackage.durationDays);
+
+    const member = await this.memberRepo.create({
       firstName: data.firstName,
       lastName: data.lastName,
       email: data.email,
@@ -73,26 +122,35 @@ export class MemberService {
       dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
       assignedTrainerId: data.assignedTrainerId ?? null,
       tenantId,
-    };
+      packageId: membershipPackage.id,
+      membershipStartDate: startDate,
+      membershipExpiresAt: expirationDate,
+      paymentStatus: data.paymentStatus ?? 'PAID',
+    });
 
-    return this.memberRepo.create(createData);
+    return toMemberDto(member);
   }
 
-  async listMembers(page: number, limit: number, tenantId: string) {
+  async listMembers(
+    page: number,
+    limit: number,
+    tenantId: string,
+    filter: MemberListFilter = {},
+  ) {
     const skip = (page - 1) * limit;
 
     const [members, total] = await Promise.all([
-      this.memberRepo.findMany(skip, limit, tenantId),
-      this.memberRepo.count(tenantId),
+      this.memberRepo.findMany(skip, limit, tenantId, filter),
+      this.memberRepo.count(tenantId, filter),
     ]);
 
     return {
-      members,
+      members: members.map(toMemberDto),
       meta: {
         total,
         page,
         limit,
-        totalPages: Math.ceil(total / limit),
+        totalPages: Math.max(1, Math.ceil(total / limit)),
       },
     };
   }
@@ -104,7 +162,7 @@ export class MemberService {
         'Member not found',
         ErrorCode.NOT_FOUND,
       );
-    return member;
+    return toMemberDto(member);
   }
 
   async updateMember(
@@ -116,6 +174,8 @@ export class MemberService {
       phone?: string;
       dateOfBirth?: string;
       assignedTrainerId?: string | null;
+      packageId?: string;
+      paymentStatus?: 'PAID' | 'PENDING';
     },
     tenantId: string,
   ) {
@@ -139,24 +199,50 @@ export class MemberService {
       }
     }
 
+    let packageConnect: Prisma.MemberUpdateInput['membershipPackage'];
+    let membershipStartDate: Date | undefined;
+    let membershipExpiresAt: Date | undefined;
+
+    if (data.packageId) {
+      const membershipPackage = await this.packageRepo.findById(
+        data.packageId,
+        tenantId,
+      );
+      if (!membershipPackage || !membershipPackage.isActive) {
+        throw new NotFoundException(
+          'Selected package was not found or is inactive',
+          ErrorCode.NOT_FOUND,
+        );
+      }
+      packageConnect = { connect: { id: membershipPackage.id } };
+      membershipStartDate = startOfUtcDay();
+      membershipExpiresAt = addUtcDays(
+        membershipStartDate,
+        membershipPackage.durationDays,
+      );
+    }
+
     const updateData: Prisma.MemberUpdateInput = {
       ...(data.firstName && { firstName: data.firstName }),
       ...(data.lastName && { lastName: data.lastName }),
       ...(data.email && { email: data.email }),
       ...(data.phone && { phone: data.phone }),
-
       ...(data.dateOfBirth && {
         dateOfBirth: new Date(data.dateOfBirth),
       }),
-
       ...(data.assignedTrainerId !== undefined && {
         assignedTrainer: data.assignedTrainerId
           ? { connect: { id: data.assignedTrainerId } }
-          : { disconnect: true }, // allow unassign trainer
+          : { disconnect: true },
       }),
+      ...(packageConnect && { membershipPackage: packageConnect }),
+      ...(membershipStartDate && { membershipStartDate }),
+      ...(membershipExpiresAt && { membershipExpiresAt }),
+      ...(data.paymentStatus && { paymentStatus: data.paymentStatus }),
     };
 
-    return this.memberRepo.update(id, updateData, tenantId);
+    const updated = await this.memberRepo.update(id, updateData, tenantId);
+    return toMemberDto(updated);
   }
 
   async deleteMember(id: string, tenantId: string, userId: string) {
@@ -179,6 +265,45 @@ export class MemberService {
       throw new NotFoundException('Member not found', ErrorCode.NOT_FOUND);
 
     return this.memberRepo.getAttendanceHistory(id, tenantId);
+  }
+
+  async sendRenewalReminder(id: string, tenantId: string) {
+    const member = await this.memberRepo.findById(id, tenantId);
+    if (!member) {
+      throw new NotFoundException('Member not found', ErrorCode.NOT_FOUND);
+    }
+
+    if (!isExpiringOrExpired(member.membershipExpiresAt)) {
+      throw new BadRequestException(
+        'Renewal reminders can only be sent for members expiring within 7 days or already expired',
+      );
+    }
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { name: true },
+    });
+
+    const remaining = daysRemaining(member.membershipExpiresAt) ?? 0;
+    const expirationDate = member.membershipExpiresAt
+      ? member.membershipExpiresAt.toISOString().slice(0, 10)
+      : 'unknown';
+    const packageName = member.membershipPackage?.name ?? 'membership';
+    const html = membershipRenewalTemplate({
+      memberName: member.firstName,
+      gymName: tenant?.name ?? 'your gym',
+      packageName,
+      expirationDate,
+      remainingDays: remaining,
+    });
+
+    await sendTransactionalEmail({
+      to: member.email,
+      subject: `Renew your ${packageName} membership`,
+      html,
+    });
+
+    return { sent: true, to: member.email };
   }
 
   async enforceMemberLimit(tenantId: string) {

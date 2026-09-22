@@ -155,4 +155,31 @@ export const emailProcessor = {
       throw err;
     }
   },
+
+  async renewalReminder(
+    data: Extract<EmailJobData, { type: 'MEMBER_RENEWAL_REMINDER' }>,
+  ) {
+    const remaining = data.payload.remainingDays;
+    const urgency =
+      remaining < 0
+        ? `Your membership expired ${Math.abs(remaining)} day(s) ago.`
+        : remaining === 0
+          ? 'Your membership expires today.'
+          : `Your membership expires in ${remaining} day(s).`;
+
+    const html = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee;">
+        <h2>Time to renew your membership</h2>
+        <p>Hi ${data.payload.name},</p>
+        <p>${urgency}</p>
+        <p>Your <strong>${data.payload.packageName}</strong> package at <strong>${data.payload.gymName}</strong> ends on <strong>${data.payload.expirationDate}</strong>.</p>
+      </div>
+    `;
+
+    await sendEmail(
+      data.to,
+      `Renew your ${data.payload.packageName} membership`,
+      html,
+    );
+  },
 };
